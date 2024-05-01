@@ -1,0 +1,1098 @@
+/* navbar, navbar dropdown meau字体大小*/
+
+nav a.nav-link {
+    font-size: 130%;
+    /* font-weight: bold; */
+}
+
+nav a.dropdown-item {
+    font-size: 110%;
+    /* font-weight: bold; */
+}
+
+a.nav-link.active {
+    border-radius: 10px;
+}
+
+/* main nav, when active */
+.navbar-dark .navbar-nav .show>.nav-link, .navbar-dark .navbar-nav .in>.nav-link, .navbar-dark .navbar-nav .nav-tabs>li.show>a, .navbar-dark .navbar-nav .nav-tabs>li.in>a, .navbar-dark .navbar-nav .nav-pills>li.show>a, .navbar-dark .navbar-nav .nav-pills>li.in>a, .navbar.navbar-inverse .navbar-nav .show>.nav-link, .navbar.navbar-inverse .navbar-nav .in>.nav-link, .navbar.navbar-inverse .navbar-nav .nav-tabs>li.show>a, .navbar.navbar-inverse .navbar-nav .nav-tabs>li.in>a, .navbar.navbar-inverse .navbar-nav .nav-pills>li.show>a, .navbar.navbar-inverse .navbar-nav .nav-pills>li.in>a, .navbar.navbar-default .navbar-nav .show>.nav-link, .navbar.navbar-default .navbar-nav .in>.nav-link, .navbar.navbar-default .navbar-nav .nav-tabs>li.show>a, .navbar.navbar-default .navbar-nav .nav-tabs>li.in>a, .navbar.navbar-default .navbar-nav .nav-pills>li.show>a, .navbar.navbar-default .navbar-nav .nav-pills>li.in>a, .navbar-dark ul.nav.navbar-nav>li.show>a, .navbar-dark ul.nav.navbar-nav>li.in>a, .navbar.navbar-inverse ul.nav.navbar-nav>li.show>a, .navbar.navbar-inverse ul.nav.navbar-nav>li.in>a, .navbar.navbar-default ul.nav.navbar-nav>li.show>a, .navbar.navbar-default ul.nav.navbar-nav>li.in>a, .navbar-dark .navbar-nav .active>.nav-link, .navbar-dark .navbar-nav .nav-tabs>li.active>a, .navbar-dark .navbar-nav .nav-pills>li.active>a, .navbar.navbar-inverse .navbar-nav .active>.nav-link, .navbar.navbar-inverse .navbar-nav .nav-tabs>li.active>a, .navbar.navbar-inverse .navbar-nav .nav-pills>li.active>a, .navbar.navbar-default .navbar-nav .active>.nav-link, .navbar.navbar-default .navbar-nav .nav-tabs>li.active>a, .navbar.navbar-default .navbar-nav .nav-pills>li.active>a, .navbar-dark ul.nav.navbar-nav>li.active>a, .navbar.navbar-inverse ul.nav.navbar-nav>li.active>a, .navbar.navbar-default ul.nav.navbar-nav>li.active>a, .navbar-dark .navbar-nav .nav-link.show, .navbar-dark .navbar-nav .nav-link.in, .navbar-dark .navbar-nav .nav-tabs>li>a.show, .navbar-dark .navbar-nav .nav-tabs>li>a.in, .navbar-dark .navbar-nav .nav-pills>li>a.show, .navbar-dark .navbar-nav .nav-pills>li>a.in, .navbar.navbar-inverse .navbar-nav .nav-link.show, .navbar.navbar-inverse .navbar-nav .nav-link.in, .navbar.navbar-inverse .navbar-nav .nav-tabs>li>a.show, .navbar.navbar-inverse .navbar-nav .nav-tabs>li>a.in, .navbar.navbar-inverse .navbar-nav .nav-pills>li>a.show, .navbar.navbar-inverse .navbar-nav .nav-pills>li>a.in, .navbar.navbar-default .navbar-nav .nav-link.show, .navbar.navbar-default .navbar-nav .nav-link.in, .navbar.navbar-default .navbar-nav .nav-tabs>li>a.show, .navbar.navbar-default .navbar-nav .nav-tabs>li>a.in, .navbar.navbar-default .navbar-nav .nav-pills>li>a.show, .navbar.navbar-default .navbar-nav .nav-pills>li>a.in, .navbar-dark ul.nav.navbar-nav>li>a.show, .navbar-dark ul.nav.navbar-nav>li>a.in, .navbar.navbar-inverse ul.nav.navbar-nav>li>a.show, .navbar.navbar-inverse ul.nav.navbar-nav>li>a.in, .navbar.navbar-default ul.nav.navbar-nav>li>a.show, .navbar.navbar-default ul.nav.navbar-nav>li>a.in, .navbar-dark .navbar-nav .nav-link.active, .navbar-dark .navbar-nav .nav-tabs>li>a.active, .navbar-dark .navbar-nav .nav-pills>li>a.active, .navbar.navbar-inverse .navbar-nav .nav-link.active, .navbar.navbar-inverse .navbar-nav .nav-tabs>li>a.active, .navbar.navbar-inverse .navbar-nav .nav-pills>li>a.active, .navbar.navbar-default .navbar-nav .nav-link.active, .navbar.navbar-default .navbar-nav .nav-tabs>li>a.active, .navbar.navbar-default .navbar-nav .nav-pills>li>a.active, .navbar-dark ul.nav.navbar-nav>li>a.active, .navbar.navbar-inverse ul.nav.navbar-nav>li>a.active, .navbar.navbar-default ul.nav.navbar-nav>li>a.active {
+    color: #ffffff;
+}
+
+#navbar > li {
+    font-weight:bold;
+}
+
+a.nav-link.active {
+    background-color: #529bb0;
+}
+
+a.nav-link {
+    color: black;
+    font-family: "Microsoft YaHei", "黑体", "宋体", sans-serif;
+}
+
+/* sub nav */
+.bg-black .dropdown-menu, .navbar.navbar-default .dropdown-menu {
+    background-color: #296D7F;
+}
+
+/* sub nav when active*/
+.bg-dark .dropdown-menu .dropdown-item.active, .navbar.navbar-default .dropdown-menu .dropdown-item.active, .bg-dark .dropdown-menu>li>a.active, .navbar.navbar-default .dropdown-menu>li>a.active, .bg-dark .dropdown-menu .dropdown-item:hover, .navbar.navbar-default .dropdown-menu .dropdown-item:hover, .bg-dark .dropdown-menu>li>a:hover, .navbar.navbar-default .dropdown-menu>li>a:hover, .bg-dark .dropdown-menu .dropdown-item:focus, .navbar.navbar-default .dropdown-menu .dropdown-item:focus, .bg-dark .dropdown-menu>li>a:focus, .navbar.navbar-default .dropdown-menu>li>a:focus {
+    background-color: #529bb0;
+    color: #ffffff;
+    /* font-weight: bold; */
+}
+
+/* 参数输入外色立体框 */
+.conf-box {
+    box-shadow:2px 2px 5px 2px #ccc;padding:15px 0px 15px 10px;
+}
+
+/* home页选择框颜色 */
+
+.cardstrong {
+    border: 3px solid;
+    border-radius: 10px;
+    border-color: #155d81;
+    padding-bottom: 10px;
+}
+
+.cardstrong2m1 {
+    border: 2px solid;
+    border-radius: 10px;
+    border-color: #155d81;
+    background-color: #4ea65230;
+}
+
+.cardstrong2m2 {
+    border: 2px solid;
+    border-radius: 10px;
+    border-color: #155d81;
+    background-color: #0BA9A230;
+}
+
+.cardstrong2m3 {
+    border: 2px solid;
+    border-radius: 10px;
+    border-color: #155d81;
+    background-color: #ff6b6b30;
+}
+
+.cardstrong2m4 {
+    border: 2px solid;
+    border-radius: 10px;
+    border-color: #155d81;
+    background-color: #eac42830;
+}
+
+
+/* gene list module, 基因选择tabpanel */
+
+#SingleGeneModuleGeneInputSection a.nav-link {
+    font-size: 110%;
+}
+
+
+/* home页面轮播两侧按钮大小 */
+
+/* big 轮播按钮 
+.slick-prev:before,
+.slick-next:before {
+    font-size: 50px;
+}
+
+.slick-next {
+    right: -25px;
+}
+
+.slick-prev {
+    left: -50px;
+}
+*/
+
+.slick-prev:before,
+.slick-next:before {
+    font-size: 0px;
+    font-family: san;
+}
+
+.slick-next {
+    right: -5px;
+}
+
+.slick-prev {
+    left: -5px;
+}
+
+/*首页下方信息栏*/
+#HomePageLastInfoCard div.card-header {
+    background-color: aliceblue;
+}
+
+#HomePageLastInfoCard .card-title {
+    color: #000;
+    margin-bottom: 0px;
+}
+
+#HomePageLastInfoCard {
+    border-color: aliceblue;
+    border-width: 2px;
+}
+
+/*CM信息栏*/
+#CMPageInfoCard div.card-header {
+    background-color: #d4a373;
+}
+
+#CMPageInfoCard .card-title {
+    color: #fff;
+    margin-bottom: 0px;
+}
+
+#CMPageInfoCard {
+    border-color: #d4a373;
+    border-width: 2px;
+}
+
+/* 首页introduction字体颜色 */
+#HomePageIntroduction p {
+    color:#ffffff;
+}
+
+/* heatmap下方提示信息隐藏，点击后显示 */
+
+.heatmap-info {
+    display: none;
+}
+
+
+/* card标题字体大小 */
+
+h3.card-title {
+    font-size: 120%;
+}
+
+/* dataset页面summarybox color */
+#DatasetPageNumberOfDatasets .card-counter.success{
+    background-color: #fe6d73;
+}
+
+#DatasetPageNumberOfRnaseqMicroarrayDatasets .card-counter.danger{
+    background-color: #17c3b2;
+}
+
+#DatasetPageNumberOfSurvivalCases .card-counter.info{
+    background-color: #1aa1e1;
+}
+
+/* genelist 页面 summarybox color*/
+#AnalysisPageGeneListModuleStatDatasetNumberSummaryBoxDiv .card-counter.info{
+    background-color: #E3C801;
+}
+
+/* dataset页面 card（下拉选择框）外观 */
+
+#PageDatasetCanerTypeCard div.card-header {
+    background-color: #0e8daa;
+}
+
+#PageDatasetCanerTypeCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#PageDatasetCanerTypeCard {
+    border-color: #0e8daa;
+    border-width: 2px;
+}
+
+
+/* signle gene analysis module，card（基因搜索框）外观 */
+
+#PageSingleGeneSearchCard div {
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+#PageSingleGeneSearchCard div.card-header {
+    background-color: #40916c;
+}
+
+#PageSingleGeneSearchCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#PageSingleGeneSearchCard {
+    border-color: #40916c;
+    border-width: 2px;
+}
+
+/* genelist module, hot word外周空隙 */
+
+#AnalysisPageGenelistModuleGenesetGroup div button {
+    margin: 2px;
+}
+
+/* genelist module, gene input card（下拉选择框）外观 */
+
+#GenelistModuleGeneInputCard div.card-header {
+    background-color: #fe6d73;
+}
+
+#GenelistModuleGeneInputCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#GenelistModuleGeneInputCard {
+    border-color: #fe6d73;
+    border-width: 2px;
+    height: 500px;
+}
+
+/* genelist module, gene and dataset summary card 外观 */
+
+#GenelistModuleGeneStatCard div.card-header {
+    background-color: #17c3b2;
+}
+
+#GenelistModuleGeneStatCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#GenelistModuleGeneStatCard {
+    border-color: #17c3b2;
+    border-width: 2px;
+    height: 500px;
+}
+
+/* genelist module, gene score plot card（下拉选择框）外观 */
+
+#GenelistModuleGeneScorePlotCard div.card-header {
+    background-color: #1aa1e1;
+}
+
+#GenelistModuleGeneScorePlotCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#GenelistModuleGeneScorePlotCard {
+    border-color: #1aa1e1;
+    border-width: 2px;
+    height: 500px;
+}
+
+
+/* prognostic model module，card1（outcome）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput1 div.card-header {
+    background-color: #40916c;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput1 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput1 {
+    border-color: #40916c;
+    border-width: 2px;
+}
+
+
+/* prognostic model module，card2（gene）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput2 div.card-header {
+    background-color: #0BA9A2;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput2 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput2 {
+    border-color: #0BA9A2;
+    border-width: 2px;
+}
+
+
+/* prognostic model module，card3（cohort）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput3 div.card-header {
+    background-color: #ef5350;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput3 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput3 {
+    border-color: #ef5350;
+    border-width: 2px;
+}
+
+
+/* prognostic model module，card4（dataset）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput4 div.card-header {
+    background-color: #eac428;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput4 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput4 {
+    border-color: #eac428;
+    border-width: 2px;
+}
+
+/* prognostic model module，card4（dataset）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput4 div.card-header {
+    background-color: #eac428;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput4 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput4 {
+    border-color: #eac428;
+    border-width: 2px;
+}
+
+/* prognostic model module，card5（dataset）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput5 div.card-header {
+    background-color: #209271;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput5 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput5 {
+    border-color: #209271;
+    border-width: 2px;
+}
+
+/* prognostic model module，card6（dataset）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput6 div.card-header {
+    background-color: #fd7e14;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput6 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput6 {
+    border-color: #fd7e14;
+    border-width: 2px;
+}
+
+/* prognostic model module，card7（result）外观 */
+
+#AnalysisPagePrognosticModelModuleUserInput7 div.card-header {
+    background-color: #26547c;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput7 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPagePrognosticModelModuleUserInput7 {
+    border-color: #26547c;
+    border-width: 2px;
+}
+
+
+/* consensus model module，card1（outcome）外观 */
+
+#AnalysisPageConsensusModelModuleUserInput1Outcome div.card-header {
+    background-color: #fe6d73 ;
+}
+
+#AnalysisPageConsensusModelModuleUserInput1Outcome .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleUserInput1Outcome {
+    border-color: #fe6d73;
+    border-width: 2px;
+}
+
+/* consensus model module，card4（pval）外观 */
+
+#AnalysisPageConsensusModelModuleUserInput1Pval div.card-header {
+    background-color: #eac428;
+}
+
+#AnalysisPageConsensusModelModuleUserInput1Pval .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleUserInput1Pval {
+    border-color: #eac428;
+    border-width: 2px;
+}
+
+/* consensus model module，card2（cohort）外观 */
+
+#AnalysisPageConsensusModelModuleUserInput2 div.card-header {
+    background-color: #17c3b2;
+}
+
+#AnalysisPageConsensusModelModuleUserInput2 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleUserInput2 {
+    border-color: #17c3b2;
+    border-width: 2px;
+}
+
+/* consensus model module，card4 外观 */
+
+#AnalysisPageConsensusModelModuleUserInput4 div.card-header {
+    background-color: #feab3a;
+}
+
+#AnalysisPageConsensusModelModuleUserInput4 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleUserInput4 {
+    border-color: #feab3a;
+    border-width: 2px;
+}
+
+/* consensus model module，card3（settings）外观 */
+
+#AnalysisPageConsensusModelModuleUserInput3 div.card-header {
+    background-color: #1aa1e1;
+}
+
+#AnalysisPageConsensusModelModuleUserInput3 .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleUserInput3 {
+    border-color: #1aa1e1;
+    border-width: 2px;
+}
+
+/* card底部去除默认padding */
+
+div.card-body {
+    padding-bottom: 0px;
+}
+
+
+/* 隐藏元素 */
+
+.hidden-element {
+    display: none;
+}
+
+
+/* 一些自定义外观 */
+
+p,
+li {
+    font-size: 110%;
+    color: #3a3a3a
+}
+
+.control-label {
+    font-size: 120%;
+    color: #2a2a2a;
+}
+
+
+/* 减少col之间的空白 */
+
+.col-sm-3,
+.col-sm-4,
+.col-sm-12 {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+/* consensus model module，gene filter card 外观 */
+
+#AnalysisPageConsensusModelModuleGeneFilter div.card-header {
+    background-color: #eac428;
+}
+
+#AnalysisPageConsensusModelModuleGeneFilter .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleGeneFilter {
+    border-color: #eac428;
+    border-width: 2px;
+}
+
+/* prognostic model module，evaluation card 外观 */
+
+#PMPageEvaluationSettingCard div.card-header {
+    background-color: #bc8a5f;
+}
+
+#PMPageEvaluationSettingCard .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#PMPageEvaluationSettingCard {
+    border-color: #bc8a5f;
+    border-width: 2px;
+}
+
+/* consensus model module，gene explore card 外观 */
+
+#AnalysisPageConsensusModelModuleGeneExplore div.card-header {
+    background-color: #ef5350;
+}
+
+#AnalysisPageConsensusModelModuleGeneExplore .card-title {
+    color: white;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleGeneExplore {
+    border-color: #ef5350;
+    border-width: 2px;
+}
+
+/* warning or error info size */ 
+#AnalysisPageConsensusModelModulePvalInput-text > p {
+    font-size:80%;
+    margin-bottom: 0px;
+}
+
+#AnalysisPageConsensusModelModuleCandidateGeneList-text > p {
+    font-size:80%;
+    margin-bottom: 0px;
+}
+
+/* home page, section title background */
+
+.text-box {
+   padding-left:16px;
+   padding-right: 16px;
+   color:#ffffff;
+   background-color:#296d7f;
+   line-height:1.8;
+   border: 3px solid;
+   border-radius: 5px;
+   border-color: #296d7f;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+    display: none; /* Chrome Safari */
+}
+
+.scrollbar-hidden {
+    scrollbar-width: none; /* firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+    overflow-x: hidden;
+    overflow-y: hidden;
+}
+
+/* homepage 最后的提交按钮 */
+
+#HomePageAnalysisGoBtnDiv a {
+    color: #ffffff;
+}
+
+/* btn1 */
+#HomePageAnalysisGoBtn1 {
+    border-radius: 20px;
+}
+
+#HomePageAnalysisGoBtn1.bttn-material-flat.bttn-primary {
+    background: #296D7F;
+    color: #fff;
+}
+
+/*
+#HomePageAnalysisGoBtn1.bttn-unite.bttn-primary {
+    border-color: #0e8daa;
+    color:#1ea9c9;
+}
+
+#HomePageAnalysisGoBtn1.bttn-unite.bttn-primary:before {
+    background: #33d3f8; 
+}
+
+#HomePageAnalysisGoBtn1.bttn-unite.bttn-primary:after {
+    background: #36bfde;
+}
+*/
+
+/* btn2 */
+#HomePageAnalysisGoBtn2 {
+    border-radius: 20px;
+}
+
+#HomePageAnalysisGoBtn2.bttn-material-flat.bttn-primary {
+    background: #296D7F;
+    color: #fff;
+}
+
+
+/*
+#HomePageAnalysisGoBtn2.bttn-unite.bttn-primary {
+    border-color: #0e8daa;
+    color:#1ea9c9;
+}
+
+#HomePageAnalysisGoBtn2.bttn-unite.bttn-primary:before {
+    background: #33d3f8; 
+}
+
+#HomePageAnalysisGoBtn2.bttn-unite.bttn-primary:after {
+    background: #36bfde;
+}
+*/
+
+/* btn3 */
+#HomePageAnalysisGoBtn3 {
+    border-radius: 20px;
+}
+
+#HomePageAnalysisGoBtn3.bttn-material-flat.bttn-primary {
+    background: #296D7F;
+    color: #fff;
+}
+/*
+#HomePageAnalysisGoBtn3.bttn-unite.bttn-primary {
+    border-color: #0e8daa;
+    color:#1ea9c9;
+}
+
+#HomePageAnalysisGoBtn3.bttn-unite.bttn-primary:before {
+    background: #33d3f8; 
+}
+
+#HomePageAnalysisGoBtn3.bttn-unite.bttn-primary:after {
+    background: #36bfde;
+}
+*/
+
+/* btn4 */
+#HomePageAnalysisGoBtn4 {
+    border-radius: 20px;
+}
+
+#HomePageAnalysisGoBtn4.bttn-material-flat.bttn-primary {
+    background: #296D7F;
+    color: #fff;
+}
+/*
+#HomePageAnalysisGoBtn4.bttn-unite.bttn-primary {
+    border-color: #0e8daa;
+    color:#1ea9c9;
+}
+
+#HomePageAnalysisGoBtn4.bttn-unite.bttn-primary:before {
+    background: #33d3f8; 
+}
+
+#HomePageAnalysisGoBtn4.bttn-unite.bttn-primary:after {
+    background: #36bfde;
+}
+*/
+
+/* single gene module, download section */
+#SingleGeneModulePageAnalysisType a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    font-size: 110%;
+}
+
+/* single gene module, Prognostic analysis */
+#SingleGenePageSubmodulePrognostsicAnalysisPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#SingleGenePageSubmodulePrognostsicAnalysisPanel a.nav-link.active {
+    background-color: #40916c;
+    color: white;
+}
+
+/* single gene module, functional analysis tabpanel */
+#SingleGenePageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#SingleGenePageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link.active {
+    background-color: #40916c;
+    color: white;
+}
+
+#SingleGenePageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-color: #e1e1e1;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#SingleGenePageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link.active {
+    background-color: #40916c;
+    border-color: #40916c;
+    color: white;
+}
+
+#SingleGenePageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-color: #e1e1e1;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#SingleGenePageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link.active {
+    background-color: #40916c;
+    border-color: #40916c;
+    color: white;
+}
+
+/* 显示于上层 */
+.show-above {
+    position:absolute;
+    z-index:2;
+}
+
+/* gene list module, functional analysis tabpanel */
+#GeneListPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#GeneListPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link.active {
+    background-color: #0BA9A2;
+    color: white;
+}
+
+#GeneListPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-color: #e1e1e1;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#GeneListPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link.active {
+    background-color: #0BA9A2;
+    border-color: #0BA9A2;
+    color: white;
+}
+
+#GeneListPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-color: #e1e1e1;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#GeneListPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link.active {
+    background-color: #0BA9A2;
+    border-color: #0BA9A2;
+    color: white;
+}
+
+
+/* prognostic module, functional analysis tabpanel */
+#PrognosticModelPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#PrognosticModelPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link.active {
+    background-color: #ef5350;
+    color: white;
+}
+
+#PrognosticModelPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-color: aliceblue;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#PrognosticModelPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link.active {
+    background-color: #ef5350;
+    border-color: #ef5350;
+    color: white;
+}
+
+#PrognosticModelPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-color: aliceblue;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#PrognosticModelPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link.active {
+    background-color: #ef5350;
+    border-color: #ef5350;
+    color: white;
+}
+
+/* consensus module, functional analysis tabpanel */
+#ConsensusModelPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#ConsensusModelPageSubmoduleFunctionalAnalysisTopTabsetPanel a.nav-link.active {
+    background-color: #eac248;
+    color: white;
+}
+
+#ConsensusModelPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-color: aliceblue;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#ConsensusModelPageSubmoduleFunctionalAnalysisORATabsetPanel a.nav-link.active {
+    background-color: #eac248;
+    border-color: #eac248;
+    color: white;
+}
+
+#ConsensusModelPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link {
+    background-color: aliceblue;
+    border-color: aliceblue;
+    /* writing-mode: vertical-lr;
+    transform: rotate(180deg); */
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 5px;
+    font-size: 100%;
+}
+
+#ConsensusModelPageSubmoduleFunctionalAnalysisGSEATabsetPanel a.nav-link.active {
+    background-color: #eac248;
+    border-color: #eac248;
+    color: white;
+}
+
+/* single gene, immunotherapy tabpanel*/
+
+#SingleGenePageSubmoduleImmunotherapyTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#SingleGenePageSubmoduleImmunotherapyTopTabsetPanel a.nav-link.active {
+    background-color: #40916c;
+    color: white;
+}
+
+/* gene list, immunotherapy tabpanel*/
+
+#GeneListPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#GeneListPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link.active {
+    background-color: #0BA9A2;
+    color: white;
+}
+
+/* prognostic model, immunotherapy tabpanel*/
+
+#PrognosticModelPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#PrognosticModelPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link.active {
+    background-color: #FF6B6B;
+    color: white;
+}
+
+/* consensus model, immunotherapy tabpanel*/
+
+#ConsensusModelPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link {
+    background-color: #e1e1e1;
+    border-radius: 5px;
+    margin-left: 4px;
+    margin-right: 4px;
+    font-size: 100%;
+}
+
+#ConsensusModelPageSubmoduleImmunotherapyTopTabsetPanel a.nav-link.active {
+    background-color: #eac428;
+    color: white;
+}
+
+/* sub analysis module, tab cotent左侧缩进减少 */
+div > div.col-sm-10 > div > div.tab-content {
+    padding-left: 2px;
+}
+
+/* single gene module, 下方tabpanel导航栏字体大小 */
+
+#SingleGeneModulePageAnalysisType a.nav-link.active {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 125%;
+    font-weight: bold;
+    background-color: #40916c;
+}
+
+/* gene list module, download section */
+#GeneListModulePageAnalysisType a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    font-size: 110%;
+}
+
+/* gene list  module, 下方tabpanel导航栏字体大小 */
+
+#GeneListModulePageAnalysisType a.nav-link.active {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 125%;
+    font-weight: bold;
+    background-color: #0BA9A2;
+}
+
+
+/* prognostic model module, download section */
+#PrognosticModelModulePageAnalysisType a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    font-size: 110%;
+}
+
+/* prognostic model module, 下方tabpanel导航栏字体大小 */
+
+#PrognosticModelModulePageAnalysisType a.nav-link.active {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 125%;
+    font-weight: bold;
+    background-color: #ff6b6b;
+}
+
+/* consensus model module, download section */
+#ConsensusModelModulePageAnalysisType a.nav-link {
+    background-color: aliceblue;
+    border-radius: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    font-size: 110%;
+}
+
+/* consensus model module, 下方tabpanel导航栏字体大小 */
+
+#ConsensusModelModulePageAnalysisType a.nav-link.active {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    font-size: 125%;
+    font-weight: bold;
+    background-color: #eac428;
+}
+
+/* submodule 右侧分析内容 */
+.tab-content {
+    padding-left: 20px;
+}
+
+/* radio选项字体放大 */
+label, .control-label, .help-block, .checkbox, .radio, .form-control-feedback {
+    font-size: 1rem;
+    color: black;
+}
+
+/* 用户输入右侧标题 */
+.rightInputTitle {
+    font-size:100%;
+    padding-top: 5px;
+}
+
