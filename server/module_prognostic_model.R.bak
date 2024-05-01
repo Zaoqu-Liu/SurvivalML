@@ -1,0 +1,1770 @@
+# this script render the server end of analysis page of module: prognostic model
+
+#### specific pkgs ####
+# no pkgs to load right now
+
+#### global reactive values ####
+PrognosticModelReactiveValues <- reactiveValues(
+  select_survars = NULL, # 用户选择的结局时间的缩写
+  Select_cohorts = NULL, # 包含outcome event的所有队列
+  User_select_cohorts = NULL, # 用户在包含outcome event的所有队列中，所选择的队列
+  Gene_Input = NULL, # 用户输入的，处理后的基因列表（字符型向量）
+  self_name = NULL, # 用户自定义的基因集名称
+  availble_cohorts = NULL, # 包含所有输入基因的，可供traning/validation选择的数据集
+  train_cohort_name = NULL, # 训练集，一个
+  test_cohort_name = NULL, #验证集，多个，availble_cohorts中除去train_cohort_name的其他
+  all_cohort_name = NULL, # 训练集和验证集的名字
+  score_list = NULL, # 模型评分
+  traindata = NULL, # 训练集数据
+  results = NULL # 建模结果
+)
+
+#### load data ####
+# set reactive values
+gtf_data <- reactiveValues(
+  gtf = NULL
+)
+cancer.symbol.data <- reactiveValues(
+  total_clin_list = NULL,
+  total_expr_list = NULL
+)
+cancer.data <- reactiveValues(
+  total_clin_list = NULL,
+  total_expr_list = NULL
+)
+observeEvent(input$HomePageAnalysisGoBtn3,{
+  ## 加载所有基因ID信息
+  load('./db/raw_data/common/GRCh38_v39.gtf.rda') 
+  gtf_data$gtf <- gtf
+  
+  ## ensembl.rda
+  load(paste(
+    "./db/raw_data/",
+    str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"),
+    "/ensembl.rda",
+    sep = ""
+  ))
+  
+  cancer.data$total_clin_list <- total_clin_list
+  cancer.data$total_expr_list <- total_expr_list
+  
+  # symbol.rda
+  load(paste(
+    "./db/raw_data/",
+    str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"),
+    "/symbol.rda",
+    sep = ""
+  ))
+  
+  cancer.symbol.data$total_clin_list <- total_clin_list
+  cancer.symbol.data$total_expr_list <- total_expr_list
+  
+  names <- names(total_clin_list)
+  ## update first view of cohort list
+  updateCheckboxGroupButtons(
+    session = session,
+    inputId = "AnalysisPagePrognosticModelModuleDatasetGroup",
+    choiceNames = names,
+    choiceValues = names,
+    checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+  )
+})
+
+#### Input:event ####
+# update cohort selection first with all cohorts
+# load data
+observeEvent(input$AnalysisPagePrognosticModelModuleEventOutcomeSelection,{
+  
+  input$AnalysisPagePrognosticModelModuleEventOutcomeSelection
+  
+  isolate({
+    # load data
+    total_clin_list <- cancer.symbol.data$total_clin_list
+    names <- names(total_clin_list)
+    
+    # user input
+    Survar_Input <- input$AnalysisPagePrognosticModelModuleEventOutcomeSelection
+    
+    select_survars <- ifelse(
+      Survar_Input == 'Overall survival',
+      'OS',
+      ifelse(
+        Survar_Input == 'Relapse-free survival',
+        'RFS',
+        ifelse(
+          Survar_Input == 'Disease-free survival',
+          'DFS',
+          ifelse(Survar_Input == 'Progression-free survival', 'PFS', 'DSS')
+        )
+      )
+    )
+    
+    # save value
+    PrognosticModelReactiveValues$select_survars <- select_survars
+    
+    Select_cohorts <-
+      names[sapply(total_clin_list, function(x) {
+        select_survars %in% colnames(x)
+      })]
+    
+    # return error if no cohorts left
+    if(length(names) > 0 & length(Select_cohorts) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = paste(
+          "There is NO cohort with [",
+          Survar_Input,
+          "] information. Please select another outcome.",
+          sep = ""
+        ),
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      
+      # update cohort selection
+      updateCheckboxGroupButtons(
+        session = session,
+        inputId = "AnalysisPagePrognosticModelModuleDatasetGroup",
+        choiceNames = Select_cohorts,
+        choiceValues = Select_cohorts,
+        checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+      )
+      
+      return()
+    }
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleDatasetGroup",
+      choiceNames = Select_cohorts,
+      choiceValues = Select_cohorts,
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    PrognosticModelReactiveValues$Select_cohorts <- Select_cohorts
+    
+  })#within isolate
+  
+})
+
+#### Input:cohort ####
+observeEvent(input$AnalysisPagePrognosticModelModuleDatasetGroupSelectAllBtn,{
+  input$AnalysisPagePrognosticModelModuleDatasetGroupSelectAllBtn
+  
+  isolate({
+    
+    Select_cohorts <- PrognosticModelReactiveValues$Select_cohorts
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleDatasetGroup",
+      choiceNames = Select_cohorts,
+      choiceValues = Select_cohorts,
+      selected = Select_cohorts,
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    PrognosticModelReactiveValues$User_select_cohorts <- Select_cohorts
+  })
+})
+
+observeEvent(input$AnalysisPagePrognosticModelModuleDatasetGroupDisSelectAllBtn,{
+  input$AnalysisPagePrognosticModelModuleDatasetGroupDisSelectAllBtn
+  
+  isolate({
+    
+    Select_cohorts <- PrognosticModelReactiveValues$Select_cohorts
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleDatasetGroup",
+      choiceNames = Select_cohorts,
+      choiceValues = Select_cohorts,
+      selected = "",
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    PrognosticModelReactiveValues$User_select_cohorts <- NULL
+  })
+})
+
+#### Input: gene ####
+# gene num summary 
+output$AnalysisPagePrognosticModelModuleGeneNumberStat <- renderUI({
+  p("awaiting user input...",
+    style = "font-size:80%; font-weight:bold; color:#d9d9d9;")
+})
+
+###### submit gene ######
+observeEvent(input$AnalysisPagePrognosticModelModuleGenelistSubmitBtn, {
+  
+  if(input$AnalysisPagePrognosticModelModuleGenelistSubmitBtn == 0){
+    return()
+  }
+  
+  input$AnalysisPagePrognosticModelModuleGenelistSubmitBtn
+  isolate({
+    
+    gtf <- gtf_data$gtf
+    
+    ######## get gene list ######
+    tmp = input$AnalysisPagePrognosticModelModuleGenelistTextArea 
+    
+    # remove spaces in the head and end of the strings
+    genes.processed = strsplit(tmp,"\n")[[1]] %>%
+      str_remove("\\s+$") %>%
+      str_remove("^\\s+") %>%
+    toupper()
+    
+    # remove blank line
+    Gene_Input = genes.processed[genes.processed != ""]
+    
+    if(any(is.null(Gene_Input))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid genes detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    } else if (length(Gene_Input) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid genes detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(str_detect(Gene_Input,"[^0-9A-Z\\.\\-\\_]"))){
+      # special characters
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Special characters detected in the gene list. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # no error
+      # save reactive values
+      # check gene symbols vaid or not
+      user.input.gene.num <- length(Gene_Input)
+      Gene_Input <- Gene_Input[Gene_Input %in% toupper(gtf$gene_name)]
+      user.input.gene.valid.num <- length(Gene_Input)
+      
+      # info
+      gene.num.msg <- paste(user.input.gene.valid.num," of ", user.input.gene.num, " input genes are valid.")
+      output$AnalysisPagePrognosticModelModuleGeneNumberStat <- renderUI({
+        p(gene.num.msg,
+          style = "font-size:80%; font-weight:bold; color:#4ea653;")
+      })
+      
+      if(user.input.gene.valid.num == 0){
+        output$AnalysisPagePrognosticModelModuleGeneNumberStat <- renderUI({
+          p("No valid gene detected.",
+            style = "font-size:80%; font-weight:bold; color:#ef5350;")
+        })
+        sendSweetAlert(
+          session = session,
+          title = "Error",
+          text = "No valid genes are detected. Please check.",
+          type = "error",
+          btn_labels = "OK",
+          closeOnClickOutside = TRUE
+        )
+        return()
+      }
+      
+      if(user.input.gene.valid.num < 2){
+        sendSweetAlert(
+          session = session,
+          title = "Error",
+          text = "Please enter at least two valid genes!",
+          type = "error",
+          btn_labels = "OK",
+          closeOnClickOutside = TRUE
+        )
+        return()
+      }
+        
+      # save gene list to reactive values
+      PrognosticModelReactiveValues$Gene_Input <- Gene_Input
+    }
+    
+    ###### get gene list name #####
+    self_name = input$AnalysisPagePrognosticModelModuleGenelistNameInput
+    
+    if(any(is.null(self_name))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid name of gene list is detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(self_name == ""){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid name of gene list is detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(str_detect(self_name,"[^0-9a-zA-Z\\.\\-\\_]"))){
+      # special characters
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Special characters detected in the name of gene list. Only letters, \"-\", \"_\", \".\", and spaces are allowed. ",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # no error
+      # save reactive values
+      PrognosticModelReactiveValues$self_name <- self_name
+    }
+
+    ####### get cohort selected #######
+    User_select_cohorts <- input$AnalysisPagePrognosticModelModuleDatasetGroup
+    if(any(is.null(User_select_cohorts))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No cohort selected. Please select at least 2 cohorts.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(length(User_select_cohorts) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No cohort selected. Please select at least 2 cohorts.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      PrognosticModelReactiveValues$User_select_cohorts <- User_select_cohorts
+    }
+    # print(User_select_cohorts)
+
+  
+    ######show summary ######
+    # start calculation 
+    # Get values
+    self_name = PrognosticModelReactiveValues$self_name 
+    Gene_Input = PrognosticModelReactiveValues$Gene_Input  
+    total_expr_list = cancer.symbol.data$total_expr_list
+    
+    ## show user selected data set info
+    total_expr_list_wanted = list()
+    for (i in User_select_cohorts){
+      total_expr_list_wanted[[i]] = total_expr_list[[i]]
+    }
+    
+    tmp <-
+      lapply(lapply(total_expr_list_wanted, rownames), function(x) {
+        Gene_Input %in% x
+      })
+    
+    bar <-
+      data.frame(Freq = sapply(tmp, sum)) %>% tibble::rownames_to_column('ID')
+    
+    
+    ## 下一步dataset selection,可供选择的队列名（只考虑包含所有基因的队列）：
+    availble_cohorts <- bar$ID[bar$Freq==length(Gene_Input)]
+    PrognosticModelReactiveValues$availble_cohorts <- availble_cohorts
+    
+    ##网站输出
+    dataset.summary.info.out <- NULL
+    for (i in names(tmp)) {
+      if (sum(tmp[[i]]) != length(Gene_Input)) {
+        tmp.info = paste0(i, ' absents ', paste0(Gene_Input[!tmp[[i]]], collapse = ', '))
+        dataset.summary.info.out = c(dataset.summary.info.out,tmp.info)
+      }
+    }
+    if(length(dataset.summary.info.out) == 0){
+      dataset.summary.info.out = "All valid genes are included in the selected datasets."
+    }
+    
+    # show stat info
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryTextDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+
+    output$AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryText <- renderPrint({
+      dataset.summary.info.out
+    })
+    
+    # summary barplot
+    ##网站输出
+    cols <-
+      c(
+        pal_npg(alpha = 0.8)(10),
+        pal_d3(alpha = 0.8)(10)[-c(3:6)],
+        pal_jco(alpha = 0.8)(10),
+        pal_nejm(alpha = 0.8)(8)
+      )
+    
+    dataset.gene.summary.plot <- ggplot(bar, aes(Freq, reorder(ID, Freq), fill = ID)) +
+      geom_bar(stat = 'identity',
+               width = 0.6,
+               color = 'black') +
+      geom_text(
+        aes(label = Freq),
+        hjust = 1.5,
+        color = 'white',
+        fontface = 'bold'
+      ) +
+      labs(x = 'Frequence') +
+      theme_bw(base_rect_size = 0) +
+      scale_fill_manual(values = cols) +
+      scale_x_continuous(expand = c(0, 0)) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 11, colour = 'black'),
+        axis.title.x = element_text(size = 13, colour = 'black'),
+        axis.title.y = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        legend.position = 'none',
+        legend.text = element_text(colour = 'black'),
+        legend.title = element_blank(),
+        legend.background = element_rect(fill = NA),
+        legend.key.width = unit(4, 'mm'),
+        legend.key.height = unit(4, 'mm')
+      )
+    
+    
+    # bar plot html
+    output$AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryBarplotHtml <- renderUI({
+      plot.height = paste(length(User_select_cohorts) * 30 + 50,"px",sep="")
+      plotOutput(
+        outputId = "AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryBarplot",
+        height = plot.height
+      )
+    })
+    
+    # barplot output
+    output$AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryBarplot <- renderPlot({
+      return(dataset.gene.summary.plot)
+    })
+    
+    shinyjs::hide(
+      id = "AnalysisPagePrognosticModelModuleDatasetSummaryPlotDivWaiting",
+      anim = TRUE,
+      animType = "fade"
+    )
+    
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModuleDatasetAndGeneSummaryBarplotDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+    
+    ###### update dataset selection #####
+    ##可供选择的队列名(只考虑包含所有基因的队列)
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleTrainDatasetSelection",
+      choices = availble_cohorts
+    )
+    
+    ## update train and validation set, in case users re-select gene or cohort 
+    ## and click modeling directly (skip train/validation selection)
+    ## so, combine the event together, mainly update global reactive values by 
+    ## change selectionInput over again
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleTrainDatasetSelection",
+      choices = availble_cohorts,
+      selected = availble_cohorts[2]
+    )
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModuleTrainDatasetSelection",
+      choices = availble_cohorts,
+      selected = availble_cohorts[1]
+    )
+    
+    
+    ##### show input in row2 ####
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModuleUserInputRow2Div",
+      anim = TRUE,
+      animType = "fade"
+    )
+        
+  }) #isolate
+})
+
+
+#### Input: training and validation data sets ####
+# default info
+output$AnalysisPagePrognosticModelModuleValidationDataset <- renderPrint({
+  "awaiting for user input..."
+})
+observeEvent(input$AnalysisPagePrognosticModelModuleTrainDatasetSelection, {
+  
+  # get reactive value
+  availble_cohorts <- PrognosticModelReactiveValues$availble_cohorts 
+  #print(User_select_cohorts)
+  
+  # get user input
+  train_cohort_name <- input$AnalysisPagePrognosticModelModuleTrainDatasetSelection
+  test_cohort_name <- NULL
+  
+  if(input$AnalysisPagePrognosticModelModuleGenelistSubmitBtn >= 1){
+    if(any(is.null(availble_cohorts))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No cohort selected. Please select at least 2 cohorts.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(length(availble_cohorts) < 2){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Fewer than two datasets contain all input genes, please change a gene list or choose more datasets.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      
+      # when being ok
+      output$AnalysisPagePrognosticModelModuleValidationDataset <- renderPrint({
+        test_cohort_name = availble_cohorts[!availble_cohorts %in% train_cohort_name]
+        
+        counter = 1
+        for(n in test_cohort_name){
+          cat(paste("[",counter,"]:",n,"\n",sep=""))
+          counter = counter + 1
+        }
+        
+        # save reactive value
+        PrognosticModelReactiveValues$test_cohort_name <- test_cohort_name
+        
+      })
+
+      # save reactive value
+      PrognosticModelReactiveValues$train_cohort_name <- train_cohort_name
+    }
+  }
+  
+})
+
+#### Input: method ####
+observeEvent(input$PrognosticModelTuningParametersHelpInfoBtn,{
+  shinypop::nx_notify_info(
+    "Please refer to help center for parameter details! You can also test with the default parameters first."
+  )
+})
+
+observeEvent(input$AnalysisPagePrognosticModelModuleConstructionMethodSelection,{
+  method <- input$AnalysisPagePrognosticModelModuleConstructionMethodSelection
+  
+  # save reactivevalues
+  PrognosticModelReactiveValues$method <- method
+  
+  # model methods
+  model.methods <-
+    c(
+      "StepCox",
+      "RSF",
+      "Lasso",
+      "Ridge",
+      "Enet",
+      "GBM",
+      "SVM",
+      "plsRcox",
+      "Coxboost",
+      "SuperPC"
+    )
+  
+  model.methods.not.selected <- model.methods[model.methods != method]
+  
+  # add shinyjs 
+  lapply(model.methods.not.selected, function(m){ 
+    shinyjs::hide(
+      id = paste("PM",m,"SettingDiv",sep="")
+    )
+  })
+  
+  shinyjs::show(
+    id = paste("PM",method,"SettingDiv",sep="")
+  )
+})
+
+#### start modeling ####
+observeEvent(input$AnalysisPagePrognosticModelModuleStartAnalyzeBtn,{
+  if(input$AnalysisPagePrognosticModelModuleStartAnalyzeBtn == 0){
+    return()
+  }
+  
+  input$AnalysisPagePrognosticModelModuleStartAnalyzeBtn
+  
+  isolate({
+    
+    # show help for waiting
+    sendSweetAlert(
+      session = session,
+      type = "info",
+      text = "Model calculation will take a few minutes. Please wait!",
+      title = "Attention",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    
+    ###### send in reactive values ######
+    availble_cohorts <- PrognosticModelReactiveValues$availble_cohorts
+    train_cohort_name <- PrognosticModelReactiveValues$train_cohort_name
+    test_cohort_name <- PrognosticModelReactiveValues$test_cohort_name
+    total_clin_list <- cancer.symbol.data$total_clin_list
+    total_expr_list <- cancer.symbol.data$total_expr_list
+    select_survars <- PrognosticModelReactiveValues$select_survars
+    Gene_Input <- PrognosticModelReactiveValues$Gene_Input
+    self_name <- PrognosticModelReactiveValues$self_name
+    
+    ###### check input values ######
+    # availble_cohorts
+    if(input$AnalysisPagePrognosticModelModuleGenelistSubmitBtn >= 1){
+      if(any(is.null(availble_cohorts))){
+        sendSweetAlert(
+          session = session,
+          title = "Error",
+          text = "No cohort selected. Please select at least 2 cohorts.",
+          type = "error",
+          btn_labels = "OK",
+          closeOnClickOutside = TRUE
+        )
+        return()
+      }else if(length(availble_cohorts) < 2){
+        sendSweetAlert(
+          session = session,
+          title = "Error",
+          text = "Please select at least 2 cohorts containing all input genes.",
+          type = "error",
+          btn_labels = "OK",
+          closeOnClickOutside = TRUE
+        )
+        return()
+      }else{
+        
+        # when being ok
+      }
+    }
+    
+    # train_cohort_name
+    if(any(is.null(train_cohort_name))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Please choose a dataset as training set.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(train_cohort_name == "")){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Please choose a dataset as training set.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # ok
+    }
+    
+    # test_cohort_name
+    # print(test_cohort_name)
+    if(any(is.null(test_cohort_name))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Please choose a dataset as test set.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(test_cohort_name == "")){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Please choose a dataset as test set.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # ok
+    }
+
+    # Gene_Input
+    if(any(is.null(Gene_Input))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid genes detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    } else if (length(Gene_Input) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid genes detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(str_detect(Gene_Input,"[^0-9A-Z\\.\\-\\_]"))){
+      # special characters
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Special characters detected in the gene list. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # no error, no nothing
+    }
+    
+    # self name
+    if(any(is.null(self_name))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid name of gene list is detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(self_name == ""){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No valid name of gene list is detected. Please check.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(any(str_detect(self_name,"[^0-9a-zA-Z\\.\\-\\_]"))){
+      # special characters
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Special characters detected in the name of gene list. Only letters, \"-\", \"_\", \".\", and spaces are allowed. ",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      # no error, no nothing
+    }
+    
+    ###### start calcualtion ######
+    all_cohort_name <- c(train_cohort_name, test_cohort_name)
+    alldata <- lapply(all_cohort_name, function(x) {
+      merge(na.omit(total_clin_list[[x]][, c('ID', paste0(select_survars, '.time'), select_survars)]),
+            na.omit(t(total_expr_list[[x]][Gene_Input, ])),
+            by.x = 1,
+            by.y = 0) %>% tibble::column_to_rownames('ID')
+    })
+    alldata <- lapply(alldata,function(x){x[x[,1]>0,]})
+    names(alldata) <- all_cohort_name
+    # names(alldata) <- c(train_cohort_name, test_cohort_name)
+    # traindata <- alldata[[train_cohort_name]]
+    
+    ## library pkgs
+    library(survival)
+    library(randomForestSRC)
+    library(glmnet)
+    library(gbm)
+    library(survivalsvm)
+    library(plsRcox)
+    library(superpc)
+    library(CoxBoost)
+    
+    # user input
+    method.selected = input$AnalysisPagePrognosticModelModuleConstructionMethodSelection
+    
+    ## calculate model risk score with wrap main func
+    # print(method.selected)
+    results <- lzq_surmodel(select_survars=select_survars,
+                            alldata=alldata,
+                            method=method.selected,##可选 StepCox, RSF, Lasso, Ridge, Enet, GBM, SVM, plsRcox, Coxboost, SuperPC
+                            seed=1234,
+                            StepCox_direction = ifelse(method.selected == "StepCox",input$PM_StepCox_direction,'backward'), ##包括三个选项：forward backward both
+                            RSF_nodesize = ifelse(method.selected == "RSF", input$PM_RSF_nodesize, 5), ## 3-30
+                            RSF_nsplit = ifelse(method.selected == "RSF", input$PM_RSF_nsplit, 10), ## 2-20
+                            RSF_splitrule = ifelse(method.selected == "RSF", input$PM_RSF_splitrule, "logrank"), ##包括三个选项：logrank bs.gradient logrankscore
+                            Lasso_lamda_rule = ifelse(method.selected == "Lasso", input$PM_Lasso_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Ridge_lamda_rule = ifelse(method.selected == "Ridge", input$PM_Ridge_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Enet_alpha = ifelse(method.selected == "Enet", input$PM_Enet_alpha, 0.5), ##可选择0.1-0.9
+                            Enet_lamda_rule = ifelse(method.selected == "Enet", input$PM_Enet_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            GBM_nodesize = ifelse(method.selected == "GBM", input$PM_GBM_nodesize, 5),
+                            SVM_type = ifelse(method.selected == "SVM", input$PM_SVM_type, 'vanbelle1'), ##包括四个选项：regression vanbelle1 vanbelle2 hybrid'
+                            SVM_diffmeth = ifelse(method.selected == "SVM", input$PM_SVM_diffmeth, 'makediff3'), ## 包括三个选项： makediff1 makediff2 and makediff3
+                            SVM_optmeth = ifelse(method.selected == "SVM", input$PM_SVM_optmeth, 'quadprog'),   ##包括两个选项：quadprog or ipop
+                            SVM_kernel = ifelse(method.selected == "SVM", input$PM_SVM_kernel, 'add_kernel'), ##包括四个选项：lin_kernel add_kernel rbf_kernel poly_kernel
+                            plsRcox_lambda_rule = ifelse(method.selected == "plsRcox", input$PM_plsRcox_lambda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Coxboost_type = ifelse(method.selected == "Coxboost", input$PM_Coxboost_type, 'verweij'), #包括两个选项 verweij naive
+                            SuperPC_ncomponents = ifelse(method.selected == "SuperPC", input$PM_SuperPC_ncomponents, 1) ## Number of principal components to compute. Should be 1,2 or 3.
+    )
+    
+    score_list <-
+      lapply(results$rs, function(x) {
+        x$score <- as.numeric(scale(x$score))
+        return(x)
+      })
+    
+    # save reactive value
+    PrognosticModelReactiveValues$all_cohort_name <- all_cohort_name
+    PrognosticModelReactiveValues$score_list <- score_list
+    PrognosticModelReactiveValues$results <- results
+    
+    # plot data
+    cols <- c(pal_npg()(10),pal_d3()(10),pal_jco()(10),pal_nejm()(8),pal_lancet()(8))
+    
+    tmp <- data.frame()
+    for (i in names(score_list)) {
+      tmp <- rbind(tmp, data.frame(Score = score_list[[i]]$score, Cohort = i))
+    }
+    
+    # plot now
+    model.score.plot <- ggplot(tmp, aes(Cohort, Score)) +
+      geom_jitter(size = 1,
+                  width = 0.2,
+                  aes(color = Cohort),
+                  alpha = 0.8) +
+      geom_boxplot(outlier.colour = NA,
+                   fill = NA,
+                   aes(color = Cohort)) +
+      scale_fill_manual(values = cols) +
+      scale_color_manual(values = cols) +
+      theme_bw(base_rect_size = 1) +
+      labs(y = self_name) +
+      theme(
+        axis.text.y = element_text(size = 10, colour = 'black'),
+        axis.text.x = element_text(
+          size = 13,
+          colour = 'black',
+          angle = 60,
+          hjust = 1
+        ),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.position = 'none',
+        axis.ticks.x = element_blank()
+      )
+    
+    # show plots
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModuleRiskScoreDiv",
+      anim = TRUE,
+      animType = "slide"
+    )
+    
+    
+    # plot html
+    output$AnalysisPagePrognosticModelModuleRiskScorePlotHtml <- renderUI({
+      plot.width = paste((35 * length(all_cohort_name) + 60),"px",sep="")
+      div(
+        plotlyOutput(
+          outputId = "AnalysisPagePrognosticModelModuleRiskScorePlot",
+          height = "380px",
+          width = plot.width
+        ),
+        style = "display:flex; align-items: center;justify-content: center;"
+      )
+    })
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModuleRiskScorePlot <- renderPlotly({
+      return(ggplotly(model.score.plot))
+    })
+    
+    ###### model plot1 ######
+    # cox regression
+    
+    # 单因素与Cindex
+    if(select_survars == 'OS') {
+      gsurv <-  as.formula(Surv(OS.time, OS) ~ score)
+    }
+    if (select_survars == 'RFS') {
+      gsurv <-  as.formula(Surv(RFS.time, RFS) ~ score)
+    }
+    if (select_survars == 'DFS') {
+      gsurv <-  as.formula(Surv(DFS.time, DFS) ~ score)
+    }
+    if (select_survars == 'PFS') {
+      gsurv <-  as.formula(Surv(PFS.time, PFS) ~ score)
+    }
+    if (select_survars == 'DSS') {
+      gsurv <-  as.formula(Surv(DSS.time, DSS) ~ score)
+    }
+    
+    coxr <- lapply(score_list,function(x){
+      x[,2] <- as.numeric(x[,2])
+      x[,3] <- as.numeric(x[,3])
+      fit <- summary(coxph(gsurv,x))
+      Cindex <- fit$concordance[1]
+      Cse <- fit$concordance[2]
+      HR <- fit$coefficients[,2]
+      HRL <- fit$conf.int[,3]
+      HRR <- fit$conf.int[,4]
+      P <- fit$coefficients[,5]
+      return(data.frame(HR=HR,HRL=HRL,HRR=HRR,P=P,Cindex=Cindex,Cse=Cse))
+    })
+    coxr <- Reduce(rbind,coxr)
+    coxr$ID <- names(score_list)
+    coxr$ll <- ifelse(coxr$P<0.0001,'****',ifelse(coxr$P<0.001,'***',ifelse(coxr$P<0.01,'**',ifelse(coxr$P<0.05,'*',''))))
+    
+    p1 <- ggplot(coxr, aes(HR, ID)) +
+      geom_vline(xintercept = 1,
+                 linetype = 2,
+                 color = 'grey50') +
+      geom_errorbar(aes(xmin = HRL, xmax = HRR), width = 0.1, size = 0.8) +
+      geom_point(shape = 15,
+                 size = 3,
+                 color = '#ffb627') +
+      geom_text(aes(label = ll), vjust = 1.8, size = 4) +
+      scale_x_log10() +
+      labs(x = 'Hazard ratio', title = 'Cox regression') +
+      theme_bw(base_rect_size = 0) +
+      theme(
+        axis.text.y = element_text(
+          size = 12,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.text.x = element_text(size = 10, colour = 'black'),
+        axis.title.x = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.title.y = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 14,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.position = 'none'
+      )
+    
+    p2 <- ggplot(coxr, aes(Cindex, ID)) +
+      geom_errorbar(aes(xmin = Cindex - Cse, xmax = Cindex + Cse),
+                    width = 0.1,
+                    size = 0.8) +
+      geom_bar(
+        stat = 'identity',
+        width = 0.6,
+        color = 'black',
+        fill = '#2ec4b6',
+        size = 0.5
+      ) +
+      geom_vline(xintercept = 0.5,
+                 linetype = 2,
+                 color = 'grey50') +
+      labs(x = 'Index of concordance', title = 'C-index') +
+      theme_bw(base_rect_size = 0) +
+      scale_x_continuous(expand = c(0, 0)) +
+      theme(
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(size = 10, colour = 'black'),
+        axis.title.x = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.title.y = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 14,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.position = 'none'
+      )
+    
+    plot.model.cox <- p1 + p2
+    
+    # plot html output
+    output$AnalysisPagePrognosticModelModulePlot1Html <- renderUI({
+      plot.height = paste((30 * length(all_cohort_name) + 60),"px",sep="")
+      plotOutput(
+        outputId = "AnalysisPagePrognosticModelModulePlot1",
+        height = plot.height
+      )
+    })
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModulePlot1 <- renderPlot({
+      return(plot.model.cox)
+    })
+    
+    ## download model risk score and cox regression plots
+    ## pdf
+    # create folders
+    pdf.dir.name = paste("BEST_PrognosticModel_",PrognosticModelReactiveValues$self_name,"_pdf_",uniqID(),sep="")
+    tmp.dir = tempdir()
+    pdf.plot.file.path = paste(tmp.dir,"/",pdf.dir.name,sep="")
+    dir.create(pdf.plot.file.path,recursive = FALSE)
+    
+    # save plot
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/ModelRiskScore.pdf",sep=""),
+      plot = model.score.plot,
+      base_height = 4,
+      base_width = 0.3 * length(all_cohort_name) + 1
+    )
+    
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/CoxRegression.pdf",sep=""),
+      plot = plot.model.cox,
+      base_height = 0.3 * length(all_cohort_name) + 1,
+      base_width = 5
+    )
+    
+    output$AnalysisPagePrognosticModelModuleRiskScorePlotDownloadPdfBtn <- downloadHandler(
+      filename = function(){
+        paste(pdf.dir.name,"*.zip",sep="")
+      },
+      
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+        
+        zip(filename, files = pdf.dir.name)
+        
+        setwd(wd.now)
+      },
+      
+      contentType = ".zip"
+    )
+    
+    ## png
+    # create folders
+    png.dir.name = paste("BEST_PrognosticModel_",PrognosticModelReactiveValues$self_name,"_png_",uniqID(),sep="")
+    tmp.dir = tempdir()
+    png.plot.file.path = paste(tmp.dir,"/",png.dir.name,sep="")
+    dir.create(png.plot.file.path,recursive = FALSE)
+    
+    # save plot
+    save_plot(
+      filename = paste(png.plot.file.path,"/ModelRiskScore.png",sep=""),
+      plot = model.score.plot,
+      base_height = 4,
+      base_width = 0.3 * length(all_cohort_name) + 1
+    )
+    
+    save_plot(
+      filename = paste(png.plot.file.path,"/CoxRegression.png",sep=""),
+      plot = plot.model.cox,
+      base_height = 0.3 * length(all_cohort_name) + 1,
+      base_width = 5
+    )
+    
+    output$AnalysisPagePrognosticModelModuleRiskScorePlotDownloadPngBtn <- downloadHandler(
+      filename = function(){
+        paste(png.dir.name,"*.zip",sep="")
+      },
+      
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+        
+        zip(filename, files = png.dir.name)
+        
+        setwd(wd.now)
+      },
+      
+      contentType = ".zip"
+    )
+    
+    
+    
+    ## update plot2-3 settings 
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModule4PlotsCohortSelection",
+      choices = all_cohort_name
+    )
+    
+    
+    
+    
+  }) #isolate
+})
+
+
+#### model evaluation (plot2-3) ####
+# percent div
+observeEvent(input$AnalysisPagePrognosticModelModule4PlotsKMPlotMethodSelection,{
+  if(input$AnalysisPagePrognosticModelModule4PlotsKMPlotMethodSelection == "custom"){
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModule4PlotsCutoffSelectionDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+  }else{
+    shinyjs::hide(
+      id = "AnalysisPagePrognosticModelModule4PlotsCutoffSelectionDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+  }
+})
+
+# cohort changed
+observeEvent(input$AnalysisPagePrognosticModelModule4PlotsCohortSelection,{
+  # reactive values
+  score_list <- PrognosticModelReactiveValues$score_list
+  
+  # user input
+  Cohort <- input$AnalysisPagePrognosticModelModule4PlotsCohortSelection
+  
+  ###### ROC curve ######
+  tmp <- score_list[[Cohort]]
+  
+  if (max(tmp[, 1], na.rm = T) < 1) {
+    time_cut <- c('3-Month AUC', '6-Month AUC', '9-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 2 & max(tmp[, 1], na.rm = T) > 1) {
+    time_cut <- c('4-Month AUC', '8-Month AUC', '12-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 3 & max(tmp[, 1], na.rm = T) > 2) {
+    time_cut <- c('6-Month AUC', '12-Month AUC', '24-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 5 & max(tmp[, 1], na.rm = T) > 3) {
+    time_cut <- c('1-Year AUC', '2-Year AUC', '3-Year AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) > 5) {
+    time_cut <- c('1-Year AUC', '3-Year AUC', '5-Year AUC')
+  }
+  get_times <- function(time_cut) {
+    if (grepl('Year', time_cut[1])) {
+      times <-
+        sapply(time_cut, function(x) {
+          unlist(strsplit(x, '-'))[1]
+        }) %>% as.numeric()
+    }
+    if (grepl('Month', time_cut[1])) {
+      times <-
+        (sapply(time_cut, function(x) {
+          unlist(strsplit(x, '-'))[1]
+        }) %>% as.numeric()) / 12
+    }
+    return(times)
+  }
+  times <- get_times(time_cut)
+  
+  ## update DCA timepoints
+  updateSelectInput(
+    session = session,
+    inputId = "AnalysisPagePrognosticModelModule4PlotsDCAPlotTimePoint",
+    choices = times
+  )
+})
+
+# submit btn clicked
+observeEvent(input$AnalysisPagePrognosticModelModuleModelEvaluationSubmitBtn,{
+  if(input$AnalysisPagePrognosticModelModuleModelEvaluationSubmitBtn == 0){
+    return()
+  }
+  
+  input$AnalysisPagePrognosticModelModuleModelEvaluationSubmitBtn
+  
+  isolate({
+    
+    # show help for waiting
+    sendSweetAlert(
+      session = session,
+      type = "info",
+      text = "Model evaluation will take several minutes. Please wait!",
+      title = "Attention",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    
+    # packages
+    library(survival)
+    library(survminer)
+    library(timeROC)
+    library(rms)
+    
+    # reactive values
+    select_survars <- PrognosticModelReactiveValues$select_survars
+    Gene_Input <- PrognosticModelReactiveValues$Gene_Input
+    self_name <- PrognosticModelReactiveValues$self_name
+    score_list <- PrognosticModelReactiveValues$score_list
+    
+    
+    # user input
+    Cohort <- input$AnalysisPagePrognosticModelModule4PlotsCohortSelection
+    Color_palette <- input$AnalysisPagePrognosticModelModule4PlotsKMPlotColorSelection
+    alpha <- input$AnalysisPagePrognosticModelModule4PlotsKMPlotTransparencySelection
+    cutoff <- input$AnalysisPagePrognosticModelModule4PlotsKMPlotMethodSelection
+    percent <- input$AnalysisPagePrognosticModelModule4PlotsCutoffSelection
+    
+
+    ########  KM plot ######## 
+    if(Color_palette=='npg'){
+      cols <- pal_npg(alpha = alpha)(10)
+    }
+    if(Color_palette=='nejm'){
+      cols <- pal_nejm(alpha = alpha)(8)
+    }
+    if(Color_palette=='jco'){
+      cols <- pal_jco(alpha = alpha)(10)
+    }
+    if(Color_palette=='d3'){
+      cols <- pal_d3(alpha = alpha)(10)
+    }
+    if(Color_palette=='lancet'){
+      cols <- pal_lancet(alpha = alpha)(9)
+    }
+    if(Color_palette=='jama'){
+      cols <- pal_jama(alpha = alpha)(7)
+    }
+    
+    #print(head(score_list[[Cohort]]))
+    plot.surv <- lzq_survplot2(
+      Sur_ids = select_survars,
+      cohort = Cohort,
+      data = score_list[[Cohort]],
+      gene = 'score',
+      Input = self_name,
+      cols = cols,
+      cutoff = cutoff,
+      percent = percent
+    )
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModuleKMPlot <- renderPlot({
+      return(plot.surv)
+    })
+      
+    ###### ROC curve ######
+    tmp <- score_list[[Cohort]]
+    
+    if (max(tmp[, 1], na.rm = T) < 1) {
+      time_cut <- c('3-Month AUC', '6-Month AUC', '9-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 2 & max(tmp[, 1], na.rm = T) > 1) {
+      time_cut <- c('4-Month AUC', '8-Month AUC', '12-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 3 & max(tmp[, 1], na.rm = T) > 2) {
+      time_cut <- c('6-Month AUC', '12-Month AUC', '24-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 5 & max(tmp[, 1], na.rm = T) > 3) {
+      time_cut <- c('1-Year AUC', '2-Year AUC', '3-Year AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) > 5) {
+      time_cut <- c('1-Year AUC', '3-Year AUC', '5-Year AUC')
+    }
+    get_times <- function(time_cut) {
+      if (grepl('Year', time_cut[1])) {
+        times <-
+          sapply(time_cut, function(x) {
+            unlist(strsplit(x, '-'))[1]
+          }) %>% as.numeric()
+      }
+      if (grepl('Month', time_cut[1])) {
+        times <-
+          (sapply(time_cut, function(x) {
+            unlist(strsplit(x, '-'))[1]
+          }) %>% as.numeric()) / 12
+      }
+      return(times)
+    }
+    times <- get_times(time_cut)
+    
+    ## update DCA timepoints
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPagePrognosticModelModule4PlotsDCAPlotTimePoint",
+      choices = times
+    )
+    
+    tt <-
+      timeROC(
+        tmp[, 1],
+        tmp[, 2],
+        tmp[, 3],
+        cause = 1,
+        times = times,
+        ROC = T,
+        weighting = 'marginal'
+      )
+    tp <-
+      tt$TP %>% as.data.frame() %>% pivot_longer(cols = 1:3,
+                                                 names_to = 'time',
+                                                 values_to = 'tp')
+    fp <-
+      tt$FP %>% as.data.frame() %>% pivot_longer(cols = 1:3,
+                                                 names_to = 'time',
+                                                 values_to = 'fp')
+    
+    dd <- tp
+    dd$fp <- fp$fp
+    dd$time <-
+      ifelse(
+        dd$time == unique(dd$time)[1],
+        paste0(time_cut[1], ' = ', sprintf("%.3f", tt$AUC[1])),
+        ifelse(
+          dd$time == unique(dd$time)[2],
+          paste0(time_cut[2], ' = ', sprintf("%.3f", tt$AUC[2])),
+          paste0(time_cut[3], ' = ', sprintf("%.3f", tt$AUC[3]))
+        )
+      )
+    
+    plot.roc <- ggplot(dd, aes(fp, tp, color = time)) +
+      geom_line(size = 1) +
+      labs(x = '1-Specificity', y = 'Sensitivity', color = NULL) +
+      theme_bw(base_rect_size = 1.5) +
+      geom_abline(slope = 1, color = 'grey70') +
+      ggtitle(Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.position = c(0.99, 0.013),
+        legend.justification = c(1, 0)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_x_continuous(expand = c(0.01, 0.01)) +
+      scale_y_continuous(expand = c(0.01, 0.01))
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModuleTimeROCPlot <- renderPlot({
+      return(plot.roc)
+    })
+    
+    ###### Calibration curve ######
+    if(select_survars=='OS'){
+      gsurv <-  as.formula(Surv(OS.time,OS)~score)
+    }
+    if(select_survars=='RFS'){
+      gsurv <-  as.formula(Surv(RFS.time,RFS)~score)
+    }
+    if(select_survars=='DFS'){
+      gsurv <-  as.formula(Surv(DFS.time,DFS)~score)
+    }
+    if(select_survars=='PFS'){
+      gsurv <-  as.formula(Surv(PFS.time,PFS)~score)
+    }
+    if(select_survars=='DSS'){
+      gsurv <-  as.formula(Surv(DSS.time,DSS)~score)
+    }
+    
+    cox1 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[1]
+    )
+    cal1 <-
+      tryCatch(
+        calibrate(
+          cox1,
+          cmethod = "KM",
+          method = "boot",
+          u = times[1],
+          m = ceiling(nrow(tmp) * 0.95 / 5),
+          B = 1000
+        ),
+        error = function(e) {
+          NA
+        }
+      )
+    cox2 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[2]
+    )
+    cal2 <-
+      tryCatch(
+        calibrate(
+          cox2,
+          cmethod = "KM",
+          method = "boot",
+          u = times[2],
+          m = ceiling(nrow(tmp) * 0.95 / 5),
+          B = 1000
+        ),
+        error = function(e) {
+          NA
+        }
+      )
+    cox3 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[3]
+    )
+    cal3 <-
+      tryCatch(
+        calibrate(
+          cox3,
+          cmethod = "KM",
+          method = "boot",
+          u = times[3],
+          m = ceiling(nrow(tmp) * 0.95 / 5),
+          B = 1000
+        ),
+        error = function(e) {
+          NA
+        }
+      )
+    
+    
+    dd <-
+      Reduce(rbind, list(tryCatch(
+        cal1[, c('mean.predicted', "KM")],
+        error = function(e)
+          data.frame(mean.predicted = rep(NA, 5), KM = rep(NA, 5))
+      ),
+      tryCatch(
+        cal2[, c('mean.predicted', "KM")],
+        error = function(e)
+          data.frame(mean.predicted = rep(NA, 5), KM = rep(NA, 5))
+      ),
+      tryCatch(
+        cal3[, c('mean.predicted', "KM")],
+        error = function(e)
+          data.frame(mean.predicted = rep(NA, 5), KM = rep(NA, 5))
+      ))) %>% as.data.frame()
+    dd$time <- rep(gsub(' AUC', '', time_cut), each = 5)
+    dd <- na.omit(dd)
+    colnames(dd)[1:2] <- c('Predicted', 'Observed')
+    
+    
+    plot.calibration <- ggplot(dd, aes(Predicted, Observed)) +
+      geom_abline(slope = 1, color = 'grey70') +
+      geom_line(size = 1, alpha = 0.7, aes(color = time)) +
+      theme_bw(base_rect_size = 1.5) +
+      geom_point(size = 3,
+                 shape = 21,
+                 aes(fill = time),
+                 stroke = 1) +
+      labs(x = 'Predicted survival (%)', y = 'Observed survival (%)', title = Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.99, 0.013),
+        legend.justification = c(1, 0)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_fill_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_x_continuous(expand = c(0.03, 0)) +
+      scale_y_continuous(expand = c(0, 0.03))
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModuleCalCurvePlot <- renderPlot({
+      return(plot.calibration)
+    })
+    
+    
+    ###### DCA #####
+    ## DCA
+    tmp$score <-
+      (tmp$score - min(tmp$score)) / (max(tmp$score) - min(tmp$score))
+    library(dcurves)
+    ##从times变量中选择 这就是 Timepoint for DCA的参数
+    select_time <-
+      as.numeric(input$AnalysisPagePrognosticModelModule4PlotsDCAPlotTimePoint)
+    
+    dd <- tryCatch((dcurves::dca(
+      gsurv,
+      data = tmp,
+      label = list(all = 'All', none = 'None', score =
+                     self_name),
+      time = select_time
+    )),
+    error = function(e) {
+      message('Calculating failed due to some error, please replace another timepoint!')
+    }
+    )
+    my <- dd$dca %>% na.omit()
+    xmax <- max(my$threshold[my$variable == 'score'])
+    dd <- tryCatch((
+      dcurves::dca(
+        gsurv,
+        data = tmp,
+        thresholds = seq(0, xmax, by = 0.01),
+        label = list(all = 'All', none = 'None', score =
+                       self_name),
+        time = select_time
+      )
+    ),
+    error = function(e) {
+      message('Calculating failed due to some error, please replace another timepoint!')
+    }
+    )
+    
+    plot.dca <- dd %>% plot(smooth = T) +
+      theme_bw(base_rect_size = 1.5) +
+      ggtitle(Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.95, 0.95),
+        legend.justification = c(1, 1)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28'))
+    
+    # plot output
+    output$AnalysisPagePrognosticModelModuleDCAPlot <- renderPlot({
+      return(plot.dca)
+    })
+    
+    ## download plot2-4
+    ## pdf
+    # create folders
+    pdf.dir.name = paste("BEST_PrognosticModel_ModelEvaluation_",PrognosticModelReactiveValues$self_name,"_pdf_",uniqID(),sep="")
+    tmp.dir = tempdir()
+    pdf.plot.file.path = paste(tmp.dir,"/",pdf.dir.name,sep="")
+    dir.create(pdf.plot.file.path,recursive = FALSE)
+    
+    # save plot
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/Kaplan-Meier_Analysis.pdf",sep=""),
+      plot = plot.surv,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/Time-dependent_ROC.pdf",sep=""),
+      plot = plot.roc,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/Calibration_Curve.pdf",sep=""),
+      plot = plot.calibration,
+      base_height = 5.5,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(pdf.plot.file.path,"/Decision_Curve_Analysis.pdf",sep=""),
+      plot = plot.dca,
+      base_height = 5.5,
+      base_width = 5
+    )
+    
+    output$AnalysisPagePrognosticModelModulePlot234DownloadPdfBtn <- downloadHandler(
+      filename = function(){
+        paste(pdf.dir.name,"*.zip",sep="")
+      },
+      
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+        
+        zip(filename, files = pdf.dir.name)
+        
+        setwd(wd.now)
+      },
+      
+      contentType = ".zip"
+    )
+    
+    ## png
+    # create folders
+    png.dir.name = paste("BEST_PrognosticModel_ModelEvaluation_",PrognosticModelReactiveValues$self_name,"_png_",uniqID(),sep="")
+    tmp.dir = tempdir()
+    png.plot.file.path = paste(tmp.dir,"/",png.dir.name,sep="")
+    dir.create(png.plot.file.path,recursive = FALSE)
+    
+    # save plot
+    save_plot(
+      filename = paste(png.plot.file.path,"/Kaplan-Meier_Analysis.png",sep=""),
+      plot = plot.surv,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(png.plot.file.path,"/Time-dependent_ROC.png",sep=""),
+      plot = plot.roc,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(png.plot.file.path,"/Calibration_Curve.png",sep=""),
+      plot = plot.calibration,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    save_plot(
+      filename = paste(png.plot.file.path,"/Decision_Curve_Analysis.png",sep=""),
+      plot = plot.dca,
+      base_height = 5.2,
+      base_width = 5
+    )
+    
+    output$AnalysisPagePrognosticModelModulePlot234DownloadPngBtn <- downloadHandler(
+      filename = function(){
+        paste(png.dir.name,"*.zip",sep="")
+      },
+      
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+        
+        zip(filename, files = png.dir.name)
+        
+        setwd(wd.now)
+      },
+      
+      contentType = ".zip"
+    )
+    
+    ## show div
+    shinyjs::show(
+      id = "AnalysisPagePrognosticModelModule4PlotsDiv",
+      anim = TRUE,
+      animType = "slide"
+    )
+    
+    
+  })#isolate
+})
+
+
+

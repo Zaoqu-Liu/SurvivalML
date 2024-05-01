@@ -1,0 +1,1490 @@
+# this script render the UI of analysis page of module: consensus model
+# cancer.datasets <- openxlsx::read.xlsx("./doc/datasetInfo/Bladder.xlsx",sheet = 1)
+
+# read job info data
+job.info <- openxlsx::read.xlsx("./db/consensus_model_job_status.xlsx",sheet = 1)
+
+# set up with UI
+ui.page_module_consensus_model <- function() {
+    
+    fluidPage(
+      useShinyjs(),
+      use_notiflix_confirm(),
+      
+      style = "width:80%;",
+      tags$head(
+        tags$link(rel = "stylesheet", type = "text/css", href = "./static/css/dataset.css")
+      ),
+      
+      #some space on the head
+      tags$br(),
+      
+      fluidRow(
+        div(
+          column(
+            8,
+            fluidRow(
+              column(2, img(src = "model4.png", width = 125), style = "padding-top:10px;"), 
+              column(10,
+                     h2("Consensus Model", style = "color:#eac428; font-weight: bold;"),
+                     p("This module provides the analysis asdfas sadf  sadfsdf ddd dd asdfasdfa. This module provides the analysis asdfasdfas  asdfasdfa.", 
+                       style="text-align:justify; "))
+            ),
+          ),
+          column(
+            4
+          ),
+          
+          # background image
+          style = "background-image:url(\"./module_background.png\");background-attachment: scroll; background-size: 1450px 150px"
+        )
+      ),
+      tags$hr(),
+      tags$br(),
+      
+      #### check whether new mission ####
+      p("Start a new analysis from the begining",
+        style = "font-weight:bold; font-size:110%; color: black;"),
+      
+      fluidRow(
+        
+        column(
+          1,
+          shinyWidgets::switchInput(
+            inputId = "AnalysisPageConsensusModelModuleStartNewMissionBtn",
+            onStatus = "warning",
+            value = TRUE,
+            onLabel = "Yes",
+            offLabel = "No",
+            labelWidth = "10px",
+            handleWidth = "40px",
+            size = "large",
+            inline = TRUE
+          )
+        ),
+        column(
+          5,
+          p("Click the button to choose whether you are start a new analysis from 
+            the begining or trying to load gene scoring data which was already calculated. ",
+            style = "color:#696969; font-size:80%; font-style:italic;")
+        ),
+        column(
+          6,
+          # space
+        )
+      ),
+      
+      
+      #### if NOT from begining ####
+      div(
+        tags$hr(),
+        
+        fluidRow(
+          
+          ###### search and load job ######
+          column(
+            8,
+            
+            bs4Dash::box(
+              
+              ## title
+              p("Input your job ID",
+                style = "font-size:110%;font-weight:bold;"),
+              
+              ####### id search ######
+              fluidRow(
+                column(
+                  6,
+                  textInput(
+                    inputId = "AnalysisPageConsensusModelModuleJobID",
+                    label = NULL,
+                    value = "",
+                    placeholder = "6218ed8b-c363-401c-a56c-bf53b0dd0327",
+                    width = "100%"
+                  )
+                ),
+                
+                column(
+                  3,
+                  shinyWidgets::actionBttn(
+                    inputId = "AnalysisPageConsensusModelModuleJobIDSearchBtn",
+                    label = "Search",
+                    color = "warning",
+                    size = "sm",
+                    icon = icon("search"),
+                    style = "material-flat",
+                    block = TRUE
+                  )
+                ),
+                
+                column(
+                  3,
+                  shinyWidgets::actionBttn(
+                    inputId = "AnalysisPageConsensusModelModuleLoadJobBtn",
+                    label = "Load Data",
+                    color = "success",
+                    size = "sm",
+                    icon = icon("cloud-upload"),
+                    style = "material-flat",
+                    block = TRUE
+                  )
+                )
+              ),
+              
+              
+              ###### search result info ######
+              htmlOutput(
+                outputId = "AnalysisPageConsensusModelModuleJobIDSearchResultInfo"
+              ),
+              tags$br(),
+              
+              # waiting for user input gif
+              fluidRow(
+                div(
+                  column(
+                    12,
+                    div(
+                      img(src = "static/picture/waiting3.gif",
+                          alt = "waiting for calculation",
+                          style = "height:220px;"),
+                      
+                      # div style to make img at center
+                      style = "display:flex; align-items: center;justify-content: center;opacity:1;",
+                    )
+                  ),
+                  
+                  id = "AnalysisPageConsensusModelModuleJobIDSearchWaitingImgDiv"
+                )
+              ),
+              
+              ###### search error ######
+              fluidRow(
+                div(
+                  column(
+                    12,
+                    div(
+                      img(src = "static/picture/error.gif",
+                          alt = "waiting for calculation",
+                          style = "height:180px;"),
+                      
+                      # div style to make img at center
+                      style = "display:flex; align-items: center;justify-content: center;opacity:1;",
+                    )
+                  ),
+                  
+                  id = "AnalysisPageConsensusModelModuleJobIDSearchFailedImgDiv",
+                  class = "hidden-element"
+                )
+              ),
+              
+              
+              ####### search result status and progress #######
+              div(
+                
+                ####### search result detailed info #######
+                DT::dataTableOutput(
+                  outputId = "AnalysisPageConsensusModelModuleJobIDSearchResultInfoDetail"
+                ),
+                tags$br(),
+                
+                fluidRow(
+                  column(
+                    4,
+                    htmlOutput(
+                      outputId = "AnalysisPageConsensusModelModuleJobIDSearchResultStatus"
+                    )
+                  ),
+                  
+                  column(
+                    8,
+                    
+                    div(
+                      fluidRow(
+                        column(
+                          2,
+                          span("Progress: ",
+                               style = "font-size:110%; color: #696969; font-weight:bold;")
+                        ),
+                        column(
+                          10,
+                          # progress warning, calculating
+                          div(
+                            shinyWidgets::progressBar(
+                              id = "AnalysisPageConsensusModelModuleJobProgressWarning", 
+                              value = 0, 
+                              status = "warning", 
+                              striped = TRUE
+                            ),
+                            style = "padding-top:5px; display: none;",
+                            id = "AnalysisPageConsensusModelModuleJobProgressWarningDiv",
+                          ),
+                          
+                          # progress success
+                          div(
+                            shinyWidgets::progressBar(
+                              id = "AnalysisPageConsensusModelModuleJobProgressSuccess", 
+                              value = 0, 
+                              status = "success", 
+                              striped = TRUE
+                            ),
+                            style = "padding-top:5px; display: none;",
+                            id = "AnalysisPageConsensusModelModuleJobProgressSuccessDiv",
+                          ),
+                          
+                          # progress danger
+                          div(
+                            shinyWidgets::progressBar(
+                              id = "AnalysisPageConsensusModelModuleJobProgressDanger", 
+                              value = 0, 
+                              status = "danger", 
+                              striped = TRUE
+                            ),
+                            style = "padding-top:5px; display: none;",
+                            id = "AnalysisPageConsensusModelModuleJobProgressDangerDiv",
+                          )
+                          
+                        ),
+                        
+                        # some space
+                        p("")
+                        
+                      ),
+                      
+                      style = "padding-top:5px;"
+                    )
+                    
+                  ),
+                  
+                  ## search failed
+                  fluidRow(
+                    column(
+                      1
+                    ),
+                    column(
+                      10,
+                      tags$hr()
+                    ),
+                    column(
+                      1
+                    )
+                  ),
+                  
+                ),
+                
+                id = "AnalysisPageConsensusModelModuleJobIDSearchResultDiv",
+                class = "hidden-element"
+              ),
+              
+              ##### start a new task #####
+              div(
+                
+                fluidRow(
+                  column(
+                    6,
+                    shiny::HTML("<span style=\"font-size:110%;font-weight:bold;\"><i class=\"fa fa-question-circle fa-1x text-warning\"> </i> Can not find a task ID? Or task failed?</span>"),
+                  ),
+                  
+                  column(
+                    6,
+                    shinyWidgets::actionBttn(
+                      inputId = "AnalysisPageConsensusModelModuleSubmitNewJobBtn",
+                      style = "material-flat",
+                      color = "warning",
+                      label = "Submit a new job",
+                      icon = icon("rocket"),
+                      size = "sm",
+                      block = TRUE
+                    )
+                  )
+                ),
+                class = "hidden-element",
+                id = "AnalysisPageConsensusModelModuleSubmitNewJobDiv"
+              ),
+              
+              
+              solidHeader = FALSE,
+              status = "warning",
+              height = "400px",
+              width = 12,
+              collapsible = FALSE,
+              collapsed = FALSE,
+              closable = FALSE,
+              maximizable = FALSE,
+              boxToolSize = "xs",
+              id = "AnalysisPageConsensusModelModuleUserInput2"
+            )
+          ),
+          
+          ##### hpc and job stat #####
+          column(
+            4,
+            
+            bs4Dash::box(
+              
+              fluidRow(
+                column(
+                  8,
+                  p("Monitoring HPC status",
+                    style = "font-weight:bold;font-size:110%;")
+                ),
+                column(
+                  4,
+                  shinyWidgets::actionBttn(
+                    inputId = "AnalysisPageConsensusModelModuleRefreshHpcStatusBtn",
+                    color = "warning",
+                    label = "Refresh",
+                    icon = icon("refresh"),
+                    style = "unite",
+                    size = "sm",
+                    block = TRUE
+                  )
+                )
+              ),
+              
+              # flexdashboard::gauge(
+              #   value = 48,
+              #   min = 0,
+              #   max = 100,
+              #   label = "CPU Usage",
+              #   symbol = "%"
+              # ), 
+              
+              fluidRow(
+                column(
+                  6,
+                  flexdashboard::gaugeOutput(
+                    outputId = "AnalysisPageConsensusModelModuleCpuUsage",
+                    height = "135px"
+                  )
+                ),
+                column(
+                  6,
+                  flexdashboard::gaugeOutput(
+                    outputId = "AnalysisPageConsensusModelModuleMemoryUsage",
+                    height = "135px"
+                  )
+                )
+              ),
+              
+              summaryBox(
+                title = "Number of jobs complete",
+                value = sum(!str_detect(tolower(job.info$Status), "cal")),
+                style = "success",
+                icon = "fa fa-check-square-o",
+                width = 12
+              ),
+              tags$br(),
+              summaryBox(
+                title = "Number of jobs calculating",
+                value = sum(str_detect(tolower(job.info$Status), "cal")),
+                style = "warning",
+                icon = "fa fa-circle-o-notch fa-spin",
+                width = 12
+              ),
+              
+              solidHeader = FALSE,
+              status = "warning",
+              height = "400px",
+              width = 12,
+              collapsible = FALSE,
+              collapsed = FALSE,
+              closable = FALSE,
+              maximizable = FALSE,
+              boxToolSize = "xs",
+              id = "AnalysisPageConsensusModelModuleUserInput2"
+            )
+          )
+          
+          
+        ),
+        
+        id = "AnalysisPageConsensusModelModuleLoadJobDiv",
+        class = "hidden-element"
+      ),
+      
+      
+      
+      #### if from begining ####
+      #### User input ####
+      div(
+        fluidRow(
+          # include shinyfeedback
+          useShinyFeedback(),
+          
+          ##### event selection #####
+          column(
+            3,
+            bs4Dash::bs4Card(
+              
+              # select outcome
+              # selectInput(
+              #   inputId = "AnalysisPageConsensusModelModuleEventOutcomeSelection",
+              #   label = "Select an event outcome",
+              #   width = "100%",
+              #   choices = c("Overall survival","Disease free survival","Tumor relapse")
+              # ),
+              p("Select an event outcome"),
+              
+              shinyWidgets::awesomeRadio(
+                inputId = "AnalysisPageConsensusModelModuleEventOutcomeSelection",
+                label = NULL,
+                choices =
+                  c(
+                    "Overall survival",
+                    "Relapse-free survival",
+                    "Disease-free survival",
+                    "Progression-free survival",
+                    "Disease-specific survival"
+                  ),
+                selected = "",
+                status = "info",
+                checkbox = FALSE,
+                width = "100%"
+              ),
+              
+              title = "Outcome",
+              collapsible = FALSE,
+              collapsed = FALSE,
+              background = "gray",
+              closable = FALSE,
+              maximizable = FALSE,
+              icon = icon("wheelchair"),
+              width = 12,
+              height = "350px",
+              id = "AnalysisPageConsensusModelModuleUserInput1Outcome"
+            )
+          ),
+          
+          
+          ##### cohort #####
+          column(
+            3,
+            bs4Dash::bs4Card(
+              # datasets 
+              div(
+                style = "height:210px;overflow-y:scroll;",
+                shinyWidgets::checkboxGroupButtons(
+                  inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+                  label = NULL,
+                  choiceNames = "", 
+                  choiceValues = "",
+                  individual = TRUE,
+                  direction = "horizontal",
+                  checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+                )
+              ),
+              
+              p(""),
+              ## select/disselect all btn
+              fluidRow(
+                
+                # select all
+                column(
+                  6,
+                  shiny::actionButton(
+                    inputId = "AnalysisPageConsensusModelModuleDatasetGroupSelectAllBtn",
+                    label = "Select all",
+                    icon = icon("check"),
+                    width = "100%",
+                    style = "color:#eac428; background-color:white;"
+                  )
+                ),
+                # disselect all
+                column(
+                  6,
+                  shiny::actionButton(
+                    inputId = "AnalysisPageConsensusModelModuleDatasetGroupDisSelectAllBtn",
+                    label = "Disselect all",
+                    icon = icon("close"),
+                    width = "100%",
+                    style = "color:#eac428; background-color:white;"
+                  )
+                )
+              ),
+              
+              tags$br(),
+              
+              ## submit cohort btn
+              shinyWidgets::actionBttn(
+                inputId = "AnalysisPageConsensusModelModuleDatasetGroupSubmitBtn",
+                label = "Submit",
+                icon = icon("check"),
+                color = "warning",
+                style = "material-flat",
+                size = "sm",
+                block = TRUE
+              ),
+              
+              # # show number of genes
+              # uiOutput(
+              #   outputId = "AnalysisPageConsensusModelModuleCohortGeneStatInfo"
+              # ),
+              
+              # # show/hide venn plot
+              # fluidRow(
+              #   column(4),
+              #   column(
+              #     4,
+              #     
+              #     # shinyWidgets::actionBttn(
+              #     #   inputId = "AnalysisPageConsensusModelModuleShowVennPlotBtn",
+              #     #   icon = icon("pie-chart"),
+              #     #   label = "Show plot",
+              #     #   style = "unite",
+              #     #   block = TRUE,
+              #     #   color = "warning"
+              #     # )
+              #     
+              #     # use actionButton instead to add update events
+              #     shiny::actionButton(
+              #       inputId = "AnalysisPageConsensusModelModuleShowVennPlotBtn",
+              #       icon = icon("pie-chart"),
+              #       label = "Show plot",
+              #       width = "100%",
+              #       style = "background-color:#eac428;color:white;"
+              #     )
+              #   ),
+              #   column(4),
+              #   
+              # ),
+              
+              # # help information
+              # fluidRow(
+              #   column(
+              #     3
+              #   ),
+              #   column(
+              #     6,
+              #     # help information about the venn plot btn
+              #     tags$p("Click the button to see the venn plot or upset plot about intersections of selected cohorts.",
+              #            style = "font-size:80%;color:#c5c5c5;text-align:center;")
+              #   ),
+              #   column(
+              #     3
+              #   )
+              # ),
+              
+              # card settings
+              title = "Cohorts",
+              collapsible = FALSE,
+              collapsed = FALSE,
+              background = "gray",
+              closable = FALSE,
+              maximizable = FALSE,
+              icon = icon("group"),
+              width = 12,
+              height = "350px",
+              id = "AnalysisPageConsensusModelModuleUserInput2"
+            )
+          ),
+          
+          ##### stat #####
+          column(
+            3,
+            bs4Dash::bs4Card(
+              
+              # number of datasets selected
+              summaryBox2(title = "Number of Cohorts",
+                          value = textOutput(outputId = "AnalysisPageConsensusModelModuleCohortNumber"),
+                          width = 12,
+                          style = "info",
+                          icon = "fa fa-group"),
+              
+              # number of datasets selected
+              summaryBox2(title = "Number of Patients",
+                          value = textOutput(outputId = "AnalysisPageConsensusModelModulePatientNumber"),
+                          width = 12,
+                          style = "danger",
+                          icon = "fa fa-user-plus"),
+              
+              # number of genes filtered
+              summaryBox2(title = "Number of Genes",
+                          value = textOutput(outputId = "AnalysisPageConsensusModelModuleGeneNumber"),
+                          width = 12,
+                          style = "primary",
+                          icon = "fa fa-google"),
+              
+              
+              # card information
+              title = "Statistics",
+              collapsible = FALSE,
+              collapsed = FALSE,
+              background = "gray",
+              closable = FALSE,
+              maximizable = FALSE,
+              icon = icon("calculator"),
+              width = 12,
+              height = "350px",
+              id = "AnalysisPageConsensusModelModuleUserInput3"
+            ),
+          ),
+          
+          ##### datasets,train,validation #####
+          column(
+            3,
+            
+            bs4Dash::bs4Card(
+              
+              # training datasets
+              fluidRow(
+                #tags$p("Traning set",style="font-size:120%;"),
+                column(
+                  12,
+                  
+                  # use dropdown picker instead of text input
+                  selectInput(
+                    inputId = "AnalysisPageConsensusModelModuleTrainDatasetSelection",
+                    label = "Training set", 
+                    width = "100%", 
+                    choices = c("")
+                  ),
+                  tags$hr()
+                )
+              ),
+              
+              
+              p("Validation datasets"),
+              # validation set
+              # textAreaInput(
+              #   inputId = "AnalysisPageConsensusModelModuleValidationDatasetSelection",
+              #   label = "Validation datasets",
+              #   height = "150px",
+              #   resize = "none",
+              #   width = "100%"
+              # ), 
+              
+              div(
+                verbatimTextOutput(
+                  outputId = "AnalysisPageConsensusModelModuleValidationDataset"
+                ),
+                style = "height:100px; overflow-y:scroll;"
+              ),
+              
+              p("* When a training set is selected, the validation sets will be automatically defined as all the rest cohorts.",
+                style = "color:#3b3b3b; font-size:80%; font-style:italic; text-align:justify;"),
+              
+              title = "Datasets",
+              collapsible = FALSE,
+              collapsed = FALSE,
+              background = "gray",
+              closable = FALSE,
+              maximizable = FALSE,
+              icon = icon("database"),
+              width = 12,
+              height = "350",
+              id = "AnalysisPageConsensusModelModuleUserInput1Pval"
+            )
+          )
+        ),
+        
+        # # # venn plot or upset plot
+        # div(
+        #   fluidRow(
+        #     column(
+        #       2
+        #     ),
+        #     
+        #     column(
+        #       8,
+        #       # space
+        #       tags$br(),
+        #       
+        #       # venn plot
+        #       plotlyOutput(
+        #         outputId = "AnalysisPageConsensusModelModuleGeneVennPlot"
+        #       ),
+        #       
+        #       # space
+        #       tags$br(),
+        #       tags$hr()
+        #     ),
+        #     
+        #     column(
+        #       2
+        #     )
+        #   ),
+        #   
+        #   # div settings with id
+        #   id = "AnalysisPageConsensusModelModuleGeneVennPlotDiv",
+        #   # add class
+        #   class = "hidden-element"
+        # ),
+        
+        
+        
+        #### analyze btn, filter gene analysis ####
+        div(
+          # space before go analyze btn
+          tags$br(),
+          
+          fluidRow(
+            column(
+              2
+            ),
+            
+            column(
+              8,
+              shinyWidgets::actionBttn(
+                inputId = "AnalysisPageConsensusModelModuleStartGeneAnalysisBtn",
+                label = "Calculate Gene Score",
+                icon = icon("rocket"),
+                color = "warning",
+                style = "unite",
+                block = TRUE
+              ),
+              p("Click the button to submit a gene score calculation task which would run automatically. So you can close the web page and check the result later.",
+                style = "font-size:80%; color:#3b3b3b; font-style:italic; text-align:justify;")
+            ),
+            
+            column(
+              2
+            )
+          ),
+          
+          class = "hidden-element",
+          id = "AnalysisPageConsensusModelModuleStartGeneAnalysisBtnDiv"
+        ),
+        
+        
+        #### new job id ####
+        div(
+          
+          tags$hr(),
+          
+          bs4Dash::box(
+            
+            fluidRow(
+              column(
+                3
+              ),
+              column(
+                6,
+                div(
+                  shiny::HTML("<span style=\"font-size:130%;font-weight:bold;color:#ef5350;\"><i class=\"fa fa-warning fa-1x text-danger\">&nbsp;</i>Important Information </span>"),
+                  style = "text-align:center;"
+                )
+              ),
+              column(
+                3
+              )
+            ),
+            
+            div(
+              p("Your analysis job has been successfully submitted. 
+              Make sure you have remembered the job ID below.",
+                style = "font-size:110%;"),
+              style = "text-align:justify;"
+            ),
+            
+            ## job id 
+            fluidRow(
+              column(
+                8,
+                htmlOutput(
+                  outputId = "AnalysisPageConsensusModelModuleNewJobIDHtml"
+                )
+              ),
+              column(
+                2,
+                
+                div(
+                  shinyWidgets::downloadBttn(
+                    outputId = "AnalysisPageConsensusModelModuleNewJobIDDownloadBtn",
+                    label = "Download ID",
+                    style = "material-flat",
+                    color = "success",
+                    size = "sm",
+                    block = TRUE
+                  ),
+                  style = "padding-top:8px;"
+                )
+              ),
+              column(
+                2,
+                
+                div(
+                  shinyWidgets::actionBttn(
+                    inputId = "AnalysisPageConsensusModelModuleNewJobCheckStatus",
+                    color = "warning",
+                    label = "Check Status",
+                    icon = icon("server"),
+                    style = "material-flat",
+                    size = "sm",
+                    block = TRUE
+                  ),
+                  style = "padding-top:8px;"
+                )
+              )
+            ),
+            
+            p("* The calculation process would usually cost about 10-30 minutes, 
+            based on the number of genes and cohorts you have selected. 
+            Please wait patiently for the result. You can check the status of 
+            your job at any time.",
+              style = "font-size:80%;color:#3b3b3b;font-style:italic;"),
+            
+            solidHeader = FALSE,
+            status = "warning",
+            height = "180px",
+            width = 12,
+            collapsible = FALSE,
+            collapsed = FALSE,
+            closable = FALSE,
+            maximizable = FALSE,
+            boxToolSize = "xs",
+            id = "AnalysisPageConsensusModelModuleUserInput4"
+          ),
+          
+          id = "AnalysisPageConsensusModelModuleNewTaskIDDiv",
+          class = "hidden-element"
+        ),
+        
+        id = "AnalysisPageConsensusModelModuleUserInputRow1Div",
+        class = "hidden-element"
+      ),
+
+      
+      
+            
+      #### gene filter ####
+      div(
+        # shinyfeedback
+        useShinyFeedback(),
+        
+        # space
+        tags$br(),
+        tags$hr(),
+        tags$br(),
+        
+        fluidRow(
+          ##### choose gene #####
+          column(
+            4,
+            
+            # title
+            tags$span("Screen and filter",
+                      style = "font-size:1.25rem; line-height: 1.3; color:#333; margin-bottom:0.5rem; font-weight: 500;"),
+            tags$span("Candidate Genes",
+                      style = "font-size:1.25rem; line-height: 1.3; color:#333; margin-bottom:0.5rem; font-weight:bold;color:#eac428;"),
+            tags$br(),
+            tags$br(),
+            
+            ## fill in two tabsets
+            tabsetPanel(
+              id = "AnalysisPageConsensusModelModuleGeneScreenTabsetPanel",
+              type = "tabs",
+              
+              ###### > gene filter tab #####
+              tabPanel(
+                title = "Gene Screening",
+                icon = icon("filter"),
+                
+                ## content
+                tags$br(),
+                
+                ## pvalue 
+                fluidRow(
+                  column(
+                    4,
+                    p("P value cutoff",
+                      style = "color:black;padding-top:3px;")
+                  ),
+                  column(
+                    8,
+                    shiny::selectizeInput(
+                      inputId = "AnalysisPageConsensusModelModulePvalInput",
+                      label = NULL,
+                      choices = c("0.05","0.01","0.001","0.1"),
+                      options = list(create = TRUE),
+                      width = "100%"
+                    )
+                  )
+                ),
+                  
+                ## filter out genes with inconsistent prognosis
+                fluidRow(
+                  column(
+                    10,
+                    p("Filter genes with inconsistent prognosis",
+                      style = "color:black;")
+                  ),
+                  column(
+                    2,
+                    div(
+                      shinyWidgets::materialSwitch(
+                        inputId = "AnalysisPageConsensusModelModuleFilterInconsistentGeneInput",
+                        label = NULL, 
+                        value = TRUE,
+                        status = "warning"
+                      ),
+                      style = "padding-top:8px;"
+                    )
+                    
+                  )
+                ),
+                
+                ## screen with cohort number
+                # slider input of cohort number
+                shiny::sliderInput(
+                  inputId = "AnalysisPageConsensusModelModuleGeneScreenCohortNumber",
+                  label = "Number of significant cohort(s)",
+                  value = 0,
+                  ticks = FALSE,
+                  min = 0,
+                  max = 10,
+                  step = 1,
+                  round = TRUE,
+                  animate = FALSE,
+                  width = "100%"
+                ),
+                
+                # some help info
+                tags$p("Minimum number of cohorts in which the gene played as a risk/protective factor", 
+                       style = "font-size:80%;color:#c5c5c5;font-style:italic;margin-top:0px;"),
+
+                # submit button
+                shinyWidgets::actionBttn(
+                  inputId = "AnalysisPageConsensusModelModuleGeneScorePlotSubmitBtn",
+                  label = "Start Gene Filter",
+                  icon = icon("filter"),
+                  color = "warning",
+                  style = "unite",
+                  block = TRUE,
+                  size = "sm"
+                ),
+                tags$br(),
+                
+                ## some summary box to fill the blank
+                # number of datasets selected
+                summaryBox(title = "Genes as risk factors",
+                           value = textOutput(outputId = "AnalysisPageConsensusModelModuleFilterRiskGeneNumber"),
+                           width = 12,
+                           style = "danger",
+                           icon = "fa fa-user-md"),
+                tags$br(),
+                
+                # number of genes filtered
+                summaryBox(title = "Genes as protective factors",
+                           value = textOutput(outputId = "AnalysisPageConsensusModelModuleFilterProtectiveGeneNumber"),
+                           width = 12,
+                           style = "primary",
+                           icon = "fa fa-user-secret"),
+                
+                tags$hr(),
+                ## model construction settings
+                fluidRow(
+                  column(
+                    10,
+                    p("Include training data in model construction",
+                      style = "color:black;")
+                  ),
+                  column(
+                    2,
+                    div(
+                      shinyWidgets::materialSwitch(
+                        inputId = "AnalysisPageConsensusModelModuleIncludeTrainingDataInput",
+                        label = NULL, 
+                        value = TRUE,
+                        status = "warning"
+                      ),
+                      style = "padding-top:8px;"
+                    )
+                    
+                  )
+                ),
+              ),
+              
+              ##### > gene list tab #####
+              tabPanel(
+                title = "Explore Candidates",
+                icon = icon("google"),
+                
+                ## content
+                tags$br(),
+                
+                ## some summary box to fill the blank
+                # number of genes filtered
+                summaryBox(title = "Number of Candidate Genes",
+                           value = textOutput(outputId = "AnalysisPageConsensusModelModuleFilterGeneNumber"),
+                           width = 12,
+                           style = "warning",
+                           icon = "fa fa-google"),
+                tags$br(),
+                
+                div(
+                  
+                  fluidRow(
+                    
+                    # some help info
+                    column(
+                      8,
+                      tags$p("Click on the button to save the list of gene names in different file formats.", 
+                             style = "font-size:90%;color:#c5c5c5;")
+                    ),
+                    
+                    # download genelist dropdown btn
+                    column(
+                      4,
+                      shinyWidgets::dropdown(
+                        # content of the dropdown
+                        tags$h6("Download"),
+                        tags$br(),
+                        
+                        # save csv
+                        
+                        shiny::downloadButton(
+                          outputId = "AnalysisPageConsensusModelModuleHeatmap2DownloadGenelistCSVBtn",
+                          label = "CSV",
+                          class = "btn-warning",
+                          icon = icon("file-text-o")
+                        ),
+                        
+                        tags$p(""),
+                        
+                        # save excel
+                        
+                        shiny::downloadButton(
+                          outputId = "AnalysisPageConsensusModelModulHeatmap2DownloadGenelistXlsxBtn",
+                          label = "Excel",
+                          class = "btn-warning",
+                          icon = icon("file-excel-o")
+                        ),
+                        
+                        ## settings of the dropdown button
+                        icon = icon("save"),
+                        label = " Save ",
+                        size = "sm",
+                        style = "unite",
+                        status = "warning",
+                        animate = animateOptions(
+                          enter = animations$fading_entrances$fadeInDown,
+                          exit = animations$fading_exits$fadeOutUp
+                        )
+                      )
+                    )
+                  ) 
+                ),
+                
+                ## use datatable instead of textarea
+                div(
+                  DT::dataTableOutput(
+                    outputId = "AnalysisPageConsensusModelModuleCandidateGeneListTable",
+                    height = "400px"
+                  ),
+                  style = "height:370px;overflow-y:scroll;"
+                ),
+              )
+            )
+          ),
+          
+          ##### > gene score plot #####
+          column(
+            8,
+            div(
+              div(
+                p(""),
+                p(""),
+                style = "height:150px;"
+              ),
+              column(
+                12,
+                div(
+                  img(src = "static/picture/waiting3.gif",
+                      alt = "waiting for calculation",
+                      style = "height:300px;"),
+                  
+                  # div style to make img at center
+                  style = "display:flex; align-items: center;justify-content: center;opacity:1;",
+                )
+              ),
+              
+              id = "AnalysisPageConsensusModelModuleGeneScorePlotWaitingImgDiv",
+              style = "height:600px;"
+            ),
+            
+            div(
+              shinyjs::useShinyjs(),
+              
+              ## draw heatmap by using heatmaply
+              div(
+                htmlOutput(
+                  outputId = "AnalysisPageConsensusModelModuleGeneFilterPlotHtml"
+                ),
+                style = "overflow-x:scroll;"
+              ),
+              
+              tags$br(),
+              
+              # plot download btn
+              shiny::downloadButton(
+                outputId = "AnalysisPageConsensusModelModuleGeneFilterPlotDownloadBtn",
+                label = "Download",
+                icon = icon("cloud-download"),
+                style = "color:#eac428;background-color:#ffffff;"
+              )
+            )
+            
+            
+          ),
+          
+          ## start modeling btn
+          # space
+          p(""),
+          
+          # btn here
+          fluidRow(
+            column(2),
+            column(
+              8,
+              shinyWidgets::actionBttn(
+                inputId = "AnalysisPageConsensusModelModuleModelScorePlotSubmitBtn",
+                label = "Start modeling",
+                icon = icon("rocket"),
+                color = "warning",
+                style = "unite",
+                block = TRUE
+              )
+            ),
+            column(2)
+          )
+          
+        ),
+        
+        # div settings
+        id = "AnalysisPageConsensusModelModuleGeneScorePlotDiv",
+        
+        # add class
+        class = "hidden-element"
+      ),
+      
+      
+      #### model score plot ####
+      div(
+        id = "AnalysisPageConsensusModelModuleModelScorePlotDiv",
+        shinyjs::useShinyjs(),
+        
+        #space
+        tags$br(),
+        tags$hr(),
+        tags$br(),
+        
+        # InteractiveComplexHeatmapOutput(
+        #   heatmap_id = "AnalysisPageConsensusModelModuleHeatmapBelow",
+        #   compact = T,
+        #   action = "dblclick",
+        #   output_ui = htmlOutput("heatmapInfoBelowConsensusModule"),
+        #   width1 = "1300px"
+        # )
+        
+        fluidRow(
+          # use shinyfeedback
+          useShinyFeedback(),
+          
+          # heatmap
+          column(
+            8,
+            ## draw heatmap by using heatmaply
+            # plotlyOutput(
+            #   outputId = "AnalysisPageConsensusModelModuleHeatmap2"
+            # )
+            div(
+              div(
+                htmlOutput(
+                  outputId = "AnalysisPageConsensusModelModuleModelScorePlotHtml"
+                ),
+                style = "height:600px; overflow-y:scroll; overflow-x: scroll; "
+              ),
+              shiny::downloadButton(
+                outputId = "AnalysisPageConsensusModelModuleModelScorePlotDownloadBtn",
+                label = "Download",
+                icon = icon("cloud-download"),
+                style = "color:#eac428;background-color:#ffffff;"
+              ),
+              
+              id = "AnalysisPageConsensusModelModuleModelScorePlotHtmlDiv",
+              style = "display:none;"
+            )
+            
+          ),
+          
+          # user input to show 4 plots
+          column(
+            4,
+            
+            fluidRow(
+              column(
+                6,
+                span("The optimal model is:",
+                     style = "font-size:120%;color:black;font-weight:bold;")
+              ),
+              column(
+                6,
+                # best method
+                htmlOutput(
+                  outputId = "AnalysisPageConsensusModelModuleOptimalModel"
+                )
+              )
+            ),
+           
+            
+            # title
+            tags$hr(),
+            tags$span("See details about specific", style = "font-size:110%;font-weight:bold;"),
+            tags$span("dataset and model",style = "font-size:110%;font-weight:bold;color:#eac428;"),
+            tags$br(),
+            
+            # dataset user input, same with validation set
+            shinyWidgets::pickerInput(
+              inputId = "AnalysisPageConsensusModelModule4PlotsDatasetSelection",
+              label = "Cohort", 
+              width = "100%", 
+              choices = c(""),
+              options = list(
+                `live-search` = TRUE, # with search utility
+                title = "Select a cohort" # the placeholder
+              )
+            ),
+            
+            # algorithm user input
+            # pick a method
+            selectInput(
+              inputId = "AnalysisPageConsensusModelModule4PlotsModelMethodSelection",
+              label = "Select an algorithm",
+              choices = c(
+                "StepCox", 
+                "RSF", 
+                "Lasso", 
+                "Ridge", 
+                "Enet", 
+                "GBM", 
+                "SVM", 
+                "plsRcox", 
+                "Coxboost", 
+                "SuperPC"
+              ),
+              width = "100%"
+            ),
+            
+            div(
+              div(
+                # plot color
+                selectInput(
+                  inputId = "AnalysisPageConsensusModelModule4PlotsKMPlotColorSelection",
+                  label = "Color palette",
+                  choices = c("npg","nejm","jco","d3","lancet","jama"),
+                  width = "100%"
+                ),
+                
+                # alpha
+                sliderInput(
+                  inputId = "AnalysisPageConsensusModelModule4PlotsKMPlotTransparencySelection",
+                  label = "Plot transparency",
+                  min = 0.2,
+                  max = 1,
+                  value = 0.8,
+                  step = 0.1,
+                  ticks = TRUE,
+                  animate = TRUE,
+                  width = "100%"
+                ),
+                
+                # km method
+                selectInput(
+                  inputId = "AnalysisPageConsensusModelModule4PlotsKMPlotMethodSelection",
+                  label = "Method for group split",
+                  width = "100%",
+                  choices = c('median','mean','quantile','optimal','custom')
+                ),
+                
+                # cutoff
+                div(
+                  sliderInput(
+                    inputId = "AnalysisPageConsensusModelModule4PlotsCutoffSelection",
+                    label = "Cutoff value",
+                    width = "100%",
+                    min = 0.1,
+                    max = 0.9,
+                    value = 0.3,
+                    step = 0.05,
+                    ticks = T,
+                    animate = T
+                  ),
+                  
+                  id = "AnalysisPageConsensusModelModule4PlotsCutoffSelectionDiv",
+                  class = "hidden-element"
+                ),
+                style = "width:95%;"
+              ),
+              style = "height:320px; overflow-y:scroll;"
+            )
+            
+            # # algorithm user input
+            # shinyWidgets::actionBttn(
+            #   inputId = "AnalysisPageConsensusModelModule4PlotsSubmitBtn",
+            #   label = "Plot", 
+            #   icon = icon("check"),
+            #   style = "jelly",
+            #   color = "warning",
+            #   size = "sm"
+            # )
+          ),
+          
+          # evaluation model btn
+          p(""),
+          fluidRow(
+            column(
+              3
+            ),
+            column(
+              6,
+              shinyWidgets::actionBttn(
+                inputId = "AnalysisPageConsensusModelModuleModelEvaluationSubmitBtn",
+                size = "md",
+                label = "Model Evaluation",
+                icon = icon("shield"),
+                style = "unite",
+                color = "warning",
+                block = TRUE
+              )
+            ),
+            column(
+              3
+            )
+          )
+          
+        ),
+        
+        # hide it unless run btn is clicked
+        class = "hidden-element"
+      ),
+        
+      #### 4 plots (3 plots) ####
+      div(
+        
+        ## space
+        tags$hr(),
+        tags$br(),
+        
+        # title of plots
+        fluidRow(
+          column(
+            4,
+            div(
+              tags$p("Survival Analysis",style="color:#ffffff;"),
+              style = "text-align:center;background-color:#4ea653;"
+            )
+          ),
+          column(
+            4,
+            div(
+              tags$p("Time ROC",style="color:#ffffff;"),
+              style = "text-align:center;background-color:#0aa9a2;"
+            )
+          ),
+          column(
+            4,
+            div(
+              tags$p("Calibration curve",style="color:#ffffff;"),
+              style = "text-align:center;background-color:#ff6b6b;"
+            )
+          )
+        ),
+        
+        # four plots
+        fluidRow(
+          column(
+            4,
+            plotOutput(
+              outputId = "AnalysisPageConsensusModelModuleKMPlot"
+            )
+          ),
+          column(
+            4,
+            plotOutput(
+              outputId = "AnalysisPageConsensusModelModuleTimeROCPlot"
+            )
+          ),
+          column(
+            4,
+            plotOutput(
+              outputId = "AnalysisPageConsensusModelModuleCalCurvePlot"
+            )
+          )
+        ),
+        
+        # space
+        tags$br(),
+        
+        # button group for saving plots
+        fluidRow(
+          column(
+            3,
+            shinyWidgets::dropdown(
+              # content of the dropdown
+              tags$h6("Save the plots with different formats"),
+              tags$br(),
+              
+              # save pdf
+              # shinyWidgets::actionBttn(
+              #   inputId = "AnalysisPageConsensusModelModuleSavePdfBtn",
+              #   icon = icon("file-pdf-o"),
+              #   label = "PDF",
+              #   color = "warning",
+              #   style = "pill",
+              #   size = "sm"
+              # ),
+              
+              shiny::downloadButton(
+                outputId = "AnalysisPageConsensusModelModuleSavePdfDownloadBtn",
+                label = "PDF",
+                class = "btn-warning",
+                icon = icon("file-pdf-o")
+              ),
+              
+              # save pdf
+              # shinyWidgets::actionBttn(
+              #   inputId = "AnalysisPageConsensusModelModuleSaveImgBtn",
+              #   icon = icon("file-image-o"),
+              #   label = "TIF",
+              #   color = "warning",
+              #   style = "pill",
+              #   size = "sm"
+              # ),
+              
+              shiny::downloadButton(
+                outputId = "AnalysisPageConsensusModelModuleSaveTiffDownloadBtn",
+                label = "Tiff",
+                class = "btn-warning",
+                icon = icon("file-image-o")
+              ),
+              
+              ## settings of the dropdown button
+              icon = icon("save"),
+              label = "Save plots",
+              size = "sm",
+              style = "unite",
+              status = "warning",
+              animate = animateOptions(
+                enter = animations$fading_entrances$fadeInDown,
+                exit = animations$fading_exits$fadeOutUp
+              )
+            )
+          ),
+          column(
+            9
+          )
+        ),
+        
+        id = "AnalysisPageConsensusModelModule4PlotsDiv",
+        class = "hidden-element"
+      ),
+      
+      ## space
+      tags$hr(),
+      tags$br(),
+      
+      ## single gene analysis tab pages
+      ui.page_module_consensus_model_down_section()
+    )
+  
+}

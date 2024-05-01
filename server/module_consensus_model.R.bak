@@ -1,0 +1,2001 @@
+# this script render the server end of analysis page of module: consensus model
+# preload data
+# cancer.datasets <- openxlsx::read.xlsx("./doc/datasetInfo/Bladder.xlsx",sheet = 1)
+
+#### specific pkgs ####
+# no pkgs to load right now
+
+#### global reactive values ####
+ConsensusModelReactiveValues <- reactiveValues(
+  select_survars = NULL, # 用户选择的结局时间的缩写
+  available_cohorts = NULL, # 包含用户选择的outcome event的队列
+  select_cohorts = NULL, # 用户在包含outcome event的available_cohorts队列中，所选择的队列
+  overlap_genes = NULL, # 用户输入的数据集的交集基因
+  alldata = NULL, # overlap_genes的表达值矩阵
+  self_name = NULL, # 用户自定义的基因集名称
+  train_cohort_name = NULL, # 训练集，一个
+  test_cohort_name = NULL, #验证集，多个，available_cohorts中除去train_cohort_name的其他
+  all_cohort_name = NULL, # 训练集和验证集的名字
+  score_list = NULL, # 模型评分
+  method = NULL, # 最佳模型
+  traindata = NULL, # 训练集数据
+  unires2 = NULL, # 基因评分结果
+  select_ids = NULL, # 经过筛选后的candidate gene
+  result = NULL, # lzq_consensus_model()建模后的模型结果
+  results = NULL # lzq_surmodel() optimal模型结果
+  
+)
+
+#### load data ####
+# load data
+## 加载所有基因ID信息
+# gtf$gene_name gtf$gene_id
+# load('./db/raw_data/common/GRCh38_v39.gtf.rda') 
+
+# set reactive values
+cancer.data <- reactiveValues(
+  total_clin_list = NULL,
+  total_expr_list = NULL
+)
+cancer.symbol.data <- reactiveValues(
+  total_clin_list = NULL,
+  total_expr_list = NULL
+)
+observeEvent(input$HomePageAnalysisGoBtn4,{
+  load(paste(
+    "./db/raw_data/",
+    str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"),
+    "/symbol.rda",
+    sep = ""
+  ))
+  
+  cancer.symbol.data$total_clin_list <- total_clin_list
+  cancer.symbol.data$total_expr_list <- total_expr_list
+  
+  names <- names(total_clin_list)
+  
+  load(paste(
+    "./db/raw_data/",
+    str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"),
+    "/ensembl.rda",
+    sep = ""
+  ))
+  
+  cancer.data$total_clin_list <- total_clin_list
+  cancer.data$total_expr_list <- total_expr_list
+  
+  ## update first view of cohort list
+  updateCheckboxGroupButtons(
+    session = session,
+    inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+    choiceNames = names,
+    choiceValues = names,
+    checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+  )
+})
+
+
+
+#### Input:event ####
+# update cohort selection first with all cohorts
+# load data
+observeEvent(input$AnalysisPageConsensusModelModuleEventOutcomeSelection,{
+  
+  input$AnalysisPageConsensusModelModuleEventOutcomeSelection
+  
+  isolate({
+    # load data
+    total_clin_list <- cancer.symbol.data$total_clin_list
+    names <- names(total_clin_list)
+    
+    # user input
+    Survar_Input <- input$AnalysisPageConsensusModelModuleEventOutcomeSelection
+    
+    select_survars <- ifelse(
+      Survar_Input == 'Overall survival',
+      'OS',
+      ifelse(
+        Survar_Input == 'Relapse-free survival',
+        'RFS',
+        ifelse(
+          Survar_Input == 'Disease-free survival',
+          'DFS',
+          ifelse(Survar_Input == 'Progression-free survival', 'PFS', 'DSS')
+        )
+      )
+    )
+    
+    # save value
+    ConsensusModelReactiveValues$select_survars <- select_survars
+    
+    available_cohorts <-
+      names[sapply(total_clin_list, function(x) {
+        select_survars %in% colnames(x)
+      })]
+    
+    
+    # return error if no cohorts left
+    if(length(names) > 0 & length(available_cohorts) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = paste(
+          "There is NO cohort with [",
+          Survar_Input,
+          "] information. Please select another outcome.",
+          sep = ""
+        ),
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      
+      # update cohort selection
+      updateCheckboxGroupButtons(
+        session = session,
+        inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+        choiceNames = available_cohorts,
+        choiceValues = available_cohorts,
+        checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+      )
+      
+      return()
+    }
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+      choiceNames = available_cohorts,
+      choiceValues = available_cohorts,
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    ConsensusModelReactiveValues$available_cohorts <- available_cohorts
+    
+  })#within isolate
+  
+})
+
+#### Input: cohort ####
+observeEvent(input$AnalysisPageConsensusModelModuleDatasetGroupSelectAllBtn,{
+  input$AnalysisPageConsensusModelModuleDatasetGroupSelectAllBtn
+  
+  isolate({
+    
+    available_cohorts <- ConsensusModelReactiveValues$available_cohorts
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+      choiceNames = available_cohorts,
+      choiceValues = available_cohorts,
+      selected = available_cohorts,
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    ConsensusModelReactiveValues$select_cohorts <- available_cohorts
+  })
+})
+
+observeEvent(input$AnalysisPageConsensusModelModuleDatasetGroupDisSelectAllBtn,{
+  input$AnalysisPageConsensusModelModuleDatasetGroupDisSelectAllBtn
+  
+  isolate({
+    
+    available_cohorts <- ConsensusModelReactiveValues$available_cohorts
+    
+    # update cohort selection
+    updateCheckboxGroupButtons(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModuleDatasetGroup",
+      choiceNames = available_cohorts,
+      choiceValues = available_cohorts,
+      selected = "",
+      checkIcon = list(yes = icon("dot-circle-o"), no = icon("circle-o"))
+    )
+    
+    # save reactive values
+    ConsensusModelReactiveValues$select_cohorts <- NULL
+  
+    
+  }) #isolate
+})
+
+
+#### Statistics ####
+## of cohorts(dataset) and genes ##
+observeEvent(input$AnalysisPageConsensusModelModuleDatasetGroupSubmitBtn,{
+
+  if(input$AnalysisPageConsensusModelModuleDatasetGroupSubmitBtn == 0){
+    return()
+  }  
+  
+  if(is.null(ConsensusModelReactiveValues$select_survars)){
+    sendSweetAlert(
+      session = session,
+      title = "Error",
+      text = "Please select an outcome event first.",
+      type = "error",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    return()
+  }
+  
+  if(length(input$AnalysisPageConsensusModelModuleDatasetGroup) < 2){
+    sendSweetAlert(
+      session = session,
+      title = "Error",
+      text = "At least 2 cohorts should be selected for further analysis.",
+      type = "error",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    return()
+  }
+  
+  input$AnalysisPageConsensusModelModuleDatasetGroupSubmitBtn == 0
+  
+  isolate({
+    # get reactive value
+    total_expr_list <- cancer.symbol.data$total_expr_list
+    total_clin_list <- cancer.symbol.data$total_clin_list
+    select_survars <- ConsensusModelReactiveValues$select_survars
+    
+    # number of cohort selected
+    select_cohorts <- input$AnalysisPageConsensusModelModuleDatasetGroup
+    cohort.num <- length(select_cohorts)
+    # save reactive value
+    ConsensusModelReactiveValues$select_cohorts <- select_cohorts
+    
+    # number of genes
+    expdata <- total_expr_list[select_cohorts]
+    overlap_genes <- Reduce(intersect, lapply(expdata, rownames))
+    gene.num <- length(overlap_genes)
+    
+    # number of patients
+    expdata <-
+      lapply(expdata, function(x) {
+        x <- x[overlap_genes, ] %>% na.omit()
+        return(x)
+      })
+    
+    alldata <- list()
+    for (i in names(expdata)) {
+      alldata[[i]] <-
+        merge(total_clin_list[[i]][, c('ID', select_survars, paste0(select_survars, '.time'))],
+              t(expdata[[i]]),
+              by.x = 1,
+              by.y = 0) %>%
+        column_to_rownames('ID') %>% na.omit()
+    }
+    sample_size <- sapply(alldata, nrow)
+    patient.num <- sum(sample_size)
+    
+    # update summary box 
+    output$AnalysisPageConsensusModelModuleCohortNumber <- renderText({
+      if(is.null(input$AnalysisPageConsensusModelModuleDatasetGroup)){
+        return(0)
+      }else{
+        return(cohort.num)
+      }
+    })
+    
+    output$AnalysisPageConsensusModelModulePatientNumber <- renderText({
+      if(is.null(input$AnalysisPageConsensusModelModuleDatasetGroup)){
+        return(0)
+      }else{
+        return(patient.num)
+      }
+    })
+    
+    output$AnalysisPageConsensusModelModuleGeneNumber <- renderText({
+      if(is.null(input$AnalysisPageConsensusModelModuleDatasetGroup)){
+        return(0)
+      }else{
+        return(gene.num)
+      }
+    })
+    
+    # save reactive values
+    ConsensusModelReactiveValues$alldata <- alldata
+    ConsensusModelReactiveValues$overlap_genes <- overlap_genes
+    
+    ## update data set selection 
+    ##可供选择的队列名(只考虑包含所有基因的队列)
+    # update traning set,
+    # default is the first one
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModuleTrainDatasetSelection",
+      choices = select_cohorts,
+      selected = select_cohorts[2]
+    )
+    updateSelectInput(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModuleTrainDatasetSelection",
+      choices = select_cohorts,
+      selected = select_cohorts[1]
+    )
+    
+    # ## show gene filter score analysis btn 
+    # shinyjs::show(
+    #   id = "AnalysisPageConsensusModelModuleStartGeneAnalysisBtnDiv",
+    #   anim = TRUE,
+    #   animType = "fade"
+    # )
+    
+  })#isolate
+  
+  
+})
+
+# #### genelist venn diagram
+# observeEvent(input$AnalysisPageConsensusModelModuleShowVennPlotBtn,{
+#   
+#   # return nothing when not clicked
+#   if(input$AnalysisPageConsensusModelModuleShowVennPlotBtn == 0){
+#     return()
+#   }
+#   
+#   # print(select_cohorts)
+#   # at least two cohorts are selected
+#   if( is.null(select_cohorts) ){
+#     sendSweetAlert(
+#       session = session,
+#       title = "Attention",
+#       text = "No cohort selected!",
+#       type = "error",
+#       closeOnClickOutside = TRUE
+#     )
+#     
+#     # stop here
+#     return()
+#   }else if( length(select_cohorts) < 2 ){
+#     sendSweetAlert(
+#       session = session,
+#       title = "Attention",
+#       text = "Please select at least 2 cohorts to draw Venn plot or Upset plot.",
+#       type = "error",
+#       closeOnClickOutside = TRUE
+#     )
+#     
+#     # stop here
+#     return()
+#   }else{
+#     # nothing to do
+#   }
+#   
+#   # check clicked times to show/hide plot
+#   if(input$AnalysisPageConsensusModelModuleShowVennPlotBtn %% 2 == 1){
+#    
+#     # generate and show plots when clicked with 1 time
+#     
+#     output$AnalysisPageConsensusModelModuleGeneVennPlot <- renderPlotly({
+#       demoPlotly()
+#     })
+#     
+#     shinyjs::show(
+#       id = "AnalysisPageConsensusModelModuleGeneVennPlotDiv",
+#       anim = TRUE,
+#       animType = "fade"
+#     )
+#     
+#     shiny::updateActionButton(
+#       session = session,
+#       inputId = "AnalysisPageConsensusModelModuleShowVennPlotBtn",
+#       label = "Hide plot",
+#       icon = icon("close")
+#     )
+#   }else{
+#       
+#     # hide things when click 2 times
+#     
+#     shinyjs::hide(
+#       id = "AnalysisPageConsensusModelModuleGeneVennPlotDiv",
+#       anim = TRUE,
+#       animType = "fade"
+#     )
+#     
+#     shiny::updateActionButton(
+#       session = session,
+#       inputId = "AnalysisPageConsensusModelModuleShowVennPlotBtn",
+#       label = "Show plot",
+#       icon = icon("pie-chart")
+#     )
+#   }
+# })
+
+
+#### Input: train and validation ####
+observeEvent(input$AnalysisPageConsensusModelModuleTrainDatasetSelection,{
+  # get reactive value
+  select_cohorts <- ConsensusModelReactiveValues$select_cohorts 
+  available_cohorts <- ConsensusModelReactiveValues$available_cohorts
+  #print(User_select_cohorts)
+  
+  # get user input
+  train_cohort_name <- input$AnalysisPageConsensusModelModuleTrainDatasetSelection
+  test_cohort_name <- NULL
+  
+  if(input$AnalysisPageConsensusModelModuleDatasetGroupSubmitBtn >= 1){
+    if(any(is.null(select_cohorts))){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "No cohort selected. Please select at least 2 cohorts.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else if(length(available_cohorts) < 2){
+      sendSweetAlert(
+        session = session,
+        title = "Error",
+        text = "Please select at least 2 cohorts containing all input genes.",
+        type = "error",
+        btn_labels = "OK",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }else{
+      
+      # when being ok
+      output$AnalysisPageConsensusModelModuleValidationDataset <- renderPrint({
+        test_cohort_name = select_cohorts[!select_cohorts %in% train_cohort_name]
+        
+        counter = 1
+        for(n in test_cohort_name){
+          cat(paste("[",counter,"]:",n,"\n",sep=""))
+          counter = counter + 1
+        }
+        
+        # save reactive value
+        ConsensusModelReactiveValues$test_cohort_name <- test_cohort_name
+        
+      })
+      
+      # save reactive value
+      ConsensusModelReactiveValues$train_cohort_name <- train_cohort_name
+      
+      # update ui
+      select_cohorts <- ConsensusModelReactiveValues$select_cohorts
+      
+      shiny::updateSliderInput(
+        session = session,
+        inputId = "AnalysisPageConsensusModelModuleGeneScreenCohortNumber",
+        min = 0,
+        max = length(select_cohorts),
+        value = ceiling(length(select_cohorts) / 2)
+      )
+    }
+  }
+  
+  
+})
+
+observeEvent(input$AnalysisPageConsensusModelModuleGeneScoreHelpInfoBtn,{
+  shinypop::nx_notify_info(
+    "Here, you should set criteria to generate candidate genes with prognostic potential for model construction."
+  )
+})
+
+# #### job submission ####
+# observeEvent(input$AnalysisPageConsensusModelModuleStartGeneAnalysisBtn,{
+#   
+#   if(input$AnalysisPageConsensusModelModuleStartGeneAnalysisBtn == 0){
+#     return()
+#   }
+#   
+#   input$AnalysisPageConsensusModelModuleStartGeneAnalysisBtn 
+#   
+#   isolate({
+#     ## send reactive values in 
+#     train_cohort_name <- ConsensusModelReactiveValues$train_cohort_name
+#     overlap_genes <- ConsensusModelReactiveValues$overlap_genes
+#     alldata <- ConsensusModelReactiveValues$alldata
+#     select_survars <- ConsensusModelReactiveValues$select_survars
+#     select_cohorts <- ConsensusModelReactiveValues$select_cohorts
+#     
+#     
+#     # packages
+#     library(tidyverse)
+#     library(rms)
+#     
+#     # start calculate
+#     load(paste0(
+#       './db/raw_data/', 
+#       str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"), 
+#       '/cm_surlist.rda')
+#     )
+#     
+#     unires2 <- surlist[[select_survars]][, select_cohorts] %>% na.omit()
+#     
+#     # save reactive values
+#     ConsensusModelReactiveValues$unires2 = unires2
+#     
+#   })
+#   
+#   shinyjs::show(
+#     id = "AnalysisPageConsensusModelModuleGeneScorePlotDiv"
+#   )
+#   
+# })
+
+
+
+#### gene score plot ####
+## p value reactive values goes here 
+AnalysisPageConsensusModelModuleReactiveValues <- reactiveValues(
+  
+  # 0 for failed, 1 for OK
+  AnalysisPageConsensusModelModulePValStatus = 0,
+  
+)
+# p vlaue
+observeEvent(input$AnalysisPageConsensusModelModulePvalInput,{
+  if(input$AnalysisPageConsensusModelModulePvalInput == "" | input$AnalysisPageConsensusModelModulePvalInput == 0){
+    showFeedbackDanger(
+      inputId = "AnalysisPageConsensusModelModulePvalInput",
+      text = "Please provide a valid P value."
+    )
+    
+    # use a reactive flag
+    AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModulePValStatus = 0
+    
+  }else{
+    hideFeedback(
+      inputId = "AnalysisPageConsensusModelModulePvalInput"
+    )
+    
+    # p value input OK
+    AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModulePValStatus = 1
+  }
+})
+
+observeEvent(input$AnalysisPageConsensusModelModuleGeneScorePlotSubmitBtn,{
+  if(input$AnalysisPageConsensusModelModuleGeneScorePlotSubmitBtn == 0){
+    return()
+  }
+  
+  # p vlaue
+  observeEvent(input$AnalysisPageConsensusModelModulePvalInput,{
+    if(input$AnalysisPageConsensusModelModulePvalInput == "" | input$AnalysisPageConsensusModelModulePvalInput == 0){
+      showFeedbackDanger(
+        inputId = "AnalysisPageConsensusModelModulePvalInput",
+        text = "Please provide a valid P value."
+      )
+      
+      ## stop here and check things all again
+      # return()
+      
+      # however it DONOT work within 2 observeEvent()
+      # use a reactive flag
+      AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModulePValStatus = 0
+      
+    }else{
+      hideFeedback(
+        inputId = "AnalysisPageConsensusModelModulePvalInput"
+      )
+      
+      # p value input OK
+      AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModulePValStatus = 1
+    }
+  })
+  
+  input$AnalysisPageConsensusModelModuleGeneScorePlotSubmitBtn
+  
+  isolate({
+    
+    # packages
+    library(ComplexHeatmap)
+    library(circlize)
+    library(tidyverse)
+    library(rms)
+    
+    # start calculate
+    load(paste0(
+      './db/raw_data/', 
+      str_replace_all(globReactiveValues$homePageCancerSelected, " +", "_"), 
+      '/cm_surlist.rda')
+    )
+    
+    
+    # reactive values send in
+    overlap_genes <- ConsensusModelReactiveValues$overlap_genes 
+    alldata <- ConsensusModelReactiveValues$alldata 
+    select_survars <- ConsensusModelReactiveValues$select_survars 
+    train_cohort_name <- ConsensusModelReactiveValues$train_cohort_name
+    select_cohorts <- ConsensusModelReactiveValues$select_cohorts
+    
+    unires2 <- surlist[[select_survars]][, select_cohorts] %>% na.omit()
+    
+    # save reactive values
+    ConsensusModelReactiveValues$unires2 = unires2
+    
+    # get user input
+    consensus_pval <- input$AnalysisPageConsensusModelModulePvalInput
+    num_sig <- input$AnalysisPageConsensusModelModuleGeneScreenCohortNumber
+    filter <- input$AnalysisPageConsensusModelModuleFilterInconsistentGeneInput
+    
+    # start calculate
+    PS <- apply(unires2,1,function(x){sum(abs(x)<consensus_pval&x<0)})
+    RS <- apply(unires2,1,function(x){sum(abs(x)<consensus_pval&x>0)})
+    
+    unires2$PS <- PS
+    unires2$RS <- RS
+    
+    if(filter) {
+      d1 <- unires2[unires2$PS != 0 & unires2$RS == 0, ]
+      d2 <- unires2[unires2$RS != 0 & unires2$PS == 0, ]
+      unires2 <- rbind(d1, d2)
+    }
+    
+    select_ids <- c(rownames(unires2)[unires2$PS >= num_sig], 
+                    rownames(unires2)[unires2$RS >= num_sig])
+    
+    # save reactive values
+    ConsensusModelReactiveValues$select_ids <- select_ids
+    # save(select_ids,file = 'consensus_select_ids.rda')
+    
+    tmp <- unires2[select_ids, !colnames(unires2) %in% c('PS', 'RS')]
+    for (i in 1:ncol(tmp)) {
+      tmp[, i] <-
+        ifelse(
+          tmp[, i] > 0 &
+            abs(tmp[, i]) < consensus_pval,
+          'Risky',
+          ifelse(
+            tmp[, i] < 0 &
+              abs(tmp[, i]) < consensus_pval,
+            'Protective',
+            'Not Significant'
+          )
+        )
+    }
+    
+    if (length(unique(c(t(tmp)))) == 3) {
+      cols <- c('#F2F2F2', alpha(c('#00b4d8', '#ff477e'), 0.9))
+    }
+    if (length(unique(c(t(tmp)))) == 2) {
+      if (sum(unique(c(t(tmp))) %in% c('Protective', 'Risky')) == 2) {
+        cols <- alpha(c('#00b4d8', '#ff477e'), 0.9)
+      }
+      if (sum(unique(c(t(tmp))) %in% c('Not Significant', 'Risky')) == 2) {
+        cols <- c('#F2F2F2', alpha('#ff477e', 0.9))
+      }
+      if (sum(unique(c(t(tmp))) %in% c('Not Significant', 'Protective')) == 2) {
+        cols <- c('#F2F2F2', alpha('#00b4d8', 0.9))
+      }
+    }
+    if (length(unique(c(t(tmp)))) == 1) {
+      if (unique(c(t(tmp))) == 'Protective') {
+        cols <- alpha('#00b4d8', 0.9)
+      }
+      if (unique(c(t(tmp))) == 'Risky') {
+        cols <- alpha('#ff477e', 0.9)
+      }
+    }
+    
+    ## update summary box
+    gene.fil.protective.num = length(rownames(unires2)[unires2$PS >= num_sig])
+    gene.fil.risk.num = length(rownames(unires2)[unires2$RS >= num_sig])
+    gene.fil.num = gene.fil.risk.num + gene.fil.protective.num
+    
+    # check genelist, alert when 0 genes filtered
+    if( gene.fil.num <= 1 ){
+      # remind user
+      sendSweetAlert(
+        session = session,
+        title = "Attention",
+        text = "No valid gene meet the screening criteria. Please check and submit again.",
+        type = "error",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }
+    
+    # update box
+    output$AnalysisPageConsensusModelModuleFilterGeneNumber <- renderText({
+      return(gene.fil.num)
+    })
+    
+    output$AnalysisPageConsensusModelModuleFilterRiskGeneNumber <- renderText({
+      return(gene.fil.risk.num)
+    })
+    
+    output$AnalysisPageConsensusModelModuleFilterProtectiveGeneNumber <- renderText({
+      return(gene.fil.protective.num)
+    })
+    
+    ##输出
+    if(nrow(tmp) == 0 | ncol(tmp) == 0){
+      sendSweetAlert(
+        session = session,
+        title = "Attention",
+        text = "No valid gene meet the screening criteria. Please check and submit again.",
+        type = "error",
+        closeOnClickOutside = TRUE
+      )
+      return()
+    }
+    
+    
+    plot.gene.score <- Heatmap(
+      t(tmp),
+      col = cols,
+      name = 'Type',
+      border = T,
+      rect_gp = gpar(col = 'black', lwd = 2),
+      row_names_side = 'left',
+      column_names_side = 'bottom',
+      row_split = 1:ncol(tmp),
+      row_title = NULL,
+      width = ncol(t(tmp)) * unit(5,'mm'),
+      height = nrow(t(tmp)) * unit(6,'mm'),
+      heatmap_legend_param = list(
+        labels_gp = gpar(fontsize = 12),
+        border = T, 
+        title_gp = gpar(fontsize = 12, fontface = "bold")
+      )
+    )
+    
+    ## hide waiting div
+    shinyjs::hide(
+      id = "AnalysisPageConsensusModelModuleGeneScorePlotWaitingImgDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+    
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModuleGeneFilterPlotHtmlDiv"
+    )
+    
+    ### plot html output
+    output$AnalysisPageConsensusModelModuleGeneFilterPlotHtml <- renderUI({
+      # plot.height = paste0(ncol(tmp) * 25 + 350,"px")
+      # plot.width = paste0(nrow(tmp) * 25 + 150,"px")
+      plot.width = gene.fil.num * 25 + 200
+      plot.width <- ifelse(plot.width > 3000, 3000, plot.width)
+      plot.width <- paste0(plot.width,"px")
+      
+      plot.height = paste(ncol(tmp) * 30 + 150, "px", sep="")
+      
+      
+      div(
+        tags$br(),
+        tags$br(),
+        
+        plotOutput(
+          outputId = "AnalysisPageConsensusModelModuleGeneFilterPlot",
+          width = plot.width,
+          height = plot.height
+        ),
+        style = "height:400px;overflow-x:scroll;overflow-y:scroll;"
+      )
+    })
+    
+    # plot output
+    output$AnalysisPageConsensusModelModuleGeneFilterPlot <- renderPlot({
+      return(plot.gene.score)
+    })
+    
+    ## save plot
+    output$AnalysisPageConsensusModelModuleGeneFilterPlotDownloadPdfBtn <- downloadHandler(
+      # filename
+      filename = function(){
+        # output file name
+        paste("BEST_ConsensusModel_CandidateGeneScorePlot_",uniqID(),".pdf",sep="")
+      },
+      
+      # contect
+      content = function(file){
+        
+        plot.width = gene.fil.num * 0.4 + 3
+        plot.height = ncol(tmp) * 0.5 + 3
+        
+        # open device
+        pdf(file, height = plot.height, width = plot.width)
+        
+        # draw plot
+        draw(
+          Heatmap(
+            t(tmp),
+            col = cols,
+            name = 'Type',
+            border = T,
+            rect_gp = gpar(col = 'black', lwd = 2),
+            row_names_side = 'left',
+            column_names_side = 'bottom',
+            row_split = 1:ncol(tmp),
+            row_title = NULL,
+            height = ncol(tmp) * unit(7.5, "mm"),
+            width = nrow(tmp) * unit(7.5, "mm"),
+            heatmap_legend_param = list(
+              labels_gp = gpar(fontsize = 12),
+              border = T,
+              nrow = 1,
+              title_position = 'leftcenter',
+              title_gp = gpar(fontsize = 12, fontface = "bold")
+            )
+          ),
+          heatmap_legend_side = "top",
+          padding = unit(c(2, 30, 2, 30), "mm") # add space around the plot
+        )
+        
+        # close device and save plot
+        dev.off()
+        
+      },
+      
+      # output file type
+      contentType = ".pdf"
+    )
+    
+    output$AnalysisPageConsensusModelModuleGeneFilterPlotDownloadPngBtn <- downloadHandler(
+      # filename
+      filename = function(){
+        # output file name
+        paste("BEST_ConsensusModel_CandidateGeneScorePlot_",uniqID(),".png",sep="")
+      },
+      
+      # content
+      content = function(file){
+        plot.width = gene.fil.num * 35 + 300
+        plot.height = ncol(tmp) * 50 + 200
+        
+        # open device
+        png(file, height = plot.height, width = plot.width, units = "px")
+        
+        # draw plot
+        draw(
+          Heatmap(
+            t(tmp),
+            col = cols,
+            name = 'Type',
+            border = T,
+            rect_gp = gpar(col = 'black', lwd = 2),
+            row_names_side = 'left',
+            column_names_side = 'bottom',
+            row_split = 1:ncol(tmp),
+            row_title = NULL,
+            height = ncol(tmp) * unit(7.5, "mm"),
+            width = nrow(tmp) * unit(7.5, "mm"),
+            heatmap_legend_param = list(
+              labels_gp = gpar(fontsize = 12),
+              border = T,
+              nrow = 1,
+              title_position = 'leftcenter',
+              title_gp = gpar(fontsize = 12, fontface = "bold")
+            )
+          ),
+          heatmap_legend_side = "top",
+          padding = unit(c(2, 30, 2, 30), "mm") # add space around the plot
+        )
+        
+        # close device and save plot
+        dev.off()
+        
+      },
+      
+      # output file type
+      contentType = ".png"
+    )
+    
+    ## update genelist table
+    output$AnalysisPageConsensusModelModuleCandidateGeneListTable <- DT::renderDataTable({
+      gene.list.fil.df = data.frame(Gene = rownames(tmp))
+      # head(gene.list.fil.df)
+      DT::datatable(
+        gene.list.fil.df,
+        class = 'cell-border stripe'
+      )
+    })
+    
+    ## download genelist
+    # download csv
+    output$AnalysisPageConsensusModelModuleHeatmap2DownloadGenelistCSVBtn <- downloadHandler(
+      
+      # filename
+      filename = function(){
+        
+        # output file name
+        paste("BEST_ConsensusModel_CandidateGeneList_",uniqID(),".csv",sep="")
+        
+      },
+      
+      # contect
+      content = function(file){
+        
+        gene.list.fil.df = data.frame(Gene = rownames(tmp))
+        write.csv(
+          gene.list.fil.df,
+          file = file, # file name from the function input
+          row.names = FALSE,
+          col.names = TRUE
+        )
+        
+      },
+      
+      # output file type
+      contentType = ".csv"
+      
+    )
+    
+    # download excel
+    output$AnalysisPageConsensusModelModulHeatmap2DownloadGenelistXlsxBtn <- downloadHandler(
+      
+      # filename
+      filename = function(){
+        
+        # output file name
+        paste("BEST_ConsensusModel_CandidateGeneList_",uniqID(),".xlsx",sep="")
+        
+      },
+      
+      # contect
+      content = function(file){
+        
+        gene.list.fil.df = data.frame(Gene = rownames(tmp))
+        openxlsx::write.xlsx(
+          gene.list.fil.df,
+          file = file # file name from the function input
+        )
+        
+      },
+      
+      # output file type
+      contentType = ".xlsx"
+      
+    )
+    
+    # show modeling btn 
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModuleModelScorePlotSubmitBtnDiv"
+    )
+    
+    # show plot div
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModuleModelSettingDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+        
+  }) # isolate
+})
+
+
+#### model score plot ####
+# AnalysisPageConsensusModelAlgorithmSettingHelpInfoBtn
+observeEvent(input$AnalysisPageConsensusModelAlgorithmSettingHelpInfoBtn,{
+  shinypop::nx_notify_info(
+    "Please refer to the help center for parameter details! Of course, you can test with the default parameters first."
+  )
+})
+
+# add event to check ueser input and plot heatmap
+observeEvent(input$AnalysisPageConsensusModelModuleModelScorePlotSubmitBtn,{
+  
+  # return nothing if btn not clicked
+  if(input$AnalysisPageConsensusModelModuleModelScorePlotSubmitBtn == 0){
+    return()
+  }
+  
+  #### check genelist earlier before modeling 
+  # # check genelist
+  # observeEvent(input$AnalysisPageConsensusModelModuleCandidateGeneList,{
+  #   if( length(genelist.filter()) == 0 ){
+  #     
+  #     # remind user
+  #     sendSweetAlert(
+  #       session = session,
+  #       title = "Attention",
+  #       text = "No valid gene meet the screening criteria. Please check and submit again.",
+  #       type = "error",
+  #       closeOnClickOutside = TRUE
+  #     )
+  #     
+  #     # show where is wrong
+  #     showFeedbackDanger(
+  #       inputId = "AnalysisPageConsensusModelModuleCandidateGeneList",
+  #       text = "No valid genes"
+  #     )
+  #     
+  #     AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModuleFilterGeneListStatus = 0
+  #     
+  #   }else{
+  #     hideFeedback(
+  #       inputId = "AnalysisPageConsensusModelModuleCandidateGeneList"
+  #     )
+  #     
+  #     AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModuleFilterGeneListStatus = 1 
+  #   }
+  #   
+  # })  
+  # # check again if genelist status failed
+  # if(AnalysisPageConsensusModelModuleReactiveValues$AnalysisPageConsensusModelModuleFilterGeneListStatus == 0){
+  #   return()
+  # }
+  
+  input$AnalysisPageConsensusModelModuleModelScorePlotSubmitBtn
+  
+  # check ok, show heatmap
+  isolate({
+    
+    library(rms)
+    
+    ## send in reactive value
+    # reactive values send in
+    alldata <- ConsensusModelReactiveValues$alldata 
+    select_survars <- ConsensusModelReactiveValues$select_survars 
+    train_cohort_name <- ConsensusModelReactiveValues$train_cohort_name
+    select_ids <- ConsensusModelReactiveValues$select_ids
+    
+    # calculate
+    select_cohorts <- names(alldata)
+    ConsensusModelReactiveValues$select_cohorts <- select_cohorts
+    alldata <- lapply(alldata,function(x){return(x[,c(paste0(select_survars,'.time'),select_survars,select_ids)])})
+    traindata <- alldata[[train_cohort_name]]
+    
+    # save value
+    ConsensusModelReactiveValues$traindata <- traindata
+    ConsensusModelReactiveValues$alldata <- alldata
+    
+    ###### start modeling #####
+    # send waiting alert
+    sendSweetAlert(
+      session = session,
+      title = "Attention",
+      type = "info",
+      text = "Model calculation will take a few minutes. Please wait!",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    
+    result <- lzq_consensus_model(
+      select_survars = select_survars,
+      alldata = alldata,
+      traindata = traindata,
+      seed=1234,
+      StepCox_direction = input$CM_StepCox_direction, ##包括三个选项：forward backward both
+      RSF_nodesize = input$CM_RSF_nodesize, ## 3-30
+      RSF_nsplit = input$CM_RSF_nsplit,  ## 2-20
+      RSF_splitrule = input$CM_RSF_splitrule,  ##包括三个选项：logrank bs.gradient logrankscore
+      Lasso_lamda_rule = input$CM_Lasso_lamda_rule, #包括两个选项 lambda.min lambda.1se
+      Ridge_lamda_rule = input$CM_Ridge_lamda_rule,  #包括两个选项 lambda.min lambda.1se
+      Enet_alpha = input$CM_Enet_alpha, ##可选择0.1-0.9
+      Enet_lamda_rule = input$CM_Enet_lamda_rule,  #包括两个选项 lambda.min lambda.1se
+      GBM_nodesize = input$CM_GBM_nodesize,
+      SVM_type = input$CM_SVM_type, ##包括四个选项：regression vanbelle1 vanbelle2 hybrid'
+      SVM_diffmeth = input$CM_SVM_diffmeth,  ## 包括三个选项： makediff1 makediff2 and makediff3
+      SVM_optmeth = input$CM_SVM_optmeth,  ##包括两个选项：quadprog or ipop
+      SVM_kernel = input$CM_SVM_kernel, ##包括四个选项：lin_kernel add_kernel rbf_kernel poly_kernel
+      plsRcox_lambda_rule = input$CM_plsRcox_lambda_rule,  #包括两个选项 lambda.min lambda.1se
+      Coxboost_type = input$CM_Coxboost_type,  #包括两个选项 verweij naive
+      SuperPC_ncomponents = input$CM_SuperPC_ncomponents ## Number of principal components to compute. Should be 1,2 or 3.
+    )
+    ConsensusModelReactiveValues$result <- result
+
+    ##### start to plot #####
+    # 单因素与Cindex 
+    if(select_survars=='OS') {
+      gsurv <-  as.formula(Surv(OS.time, OS) ~ score)
+    }
+    if (select_survars == 'RFS') {
+      gsurv <-  as.formula(Surv(RFS.time, RFS) ~ score)
+    }
+    if (select_survars == 'DFS') {
+      gsurv <-  as.formula(Surv(DFS.time, DFS) ~ score)
+    }
+    if (select_survars == 'PFS') {
+      gsurv <-  as.formula(Surv(PFS.time, PFS) ~ score)
+    }
+    if (select_survars == 'DSS') {
+      gsurv <-  as.formula(Surv(DSS.time, DSS) ~ score)
+    }
+    
+    coxrl <- lapply(result, function(model) {
+      dd <- lapply(model, function(x) {
+        x[, 2] <- as.numeric(x[, 2])
+        x[, 3] <- as.numeric(x[, 3])
+        fit <- summary(coxph(gsurv, x))
+        Cindex <- fit$concordance[1]
+        Cse <- fit$concordance[2]
+        HR <- fit$coefficients[, 2]
+        HRL <- fit$conf.int[, 3]
+        HRR <- fit$conf.int[, 4]
+        P <- fit$coefficients[, 5]
+        return(data.frame(
+          HR = HR,
+          HRL = HRL,
+          HRR = HRR,
+          P = P,
+          Cindex = Cindex,
+          Cse = Cse
+        ))
+      })
+      dd <- Reduce(rbind, dd)
+      dd$ID <- names(model)
+      dd$ll <-
+        ifelse(dd$P < 0.0001, '****', ifelse(dd$P < 0.001, '***', ifelse(
+          dd$P < 0.01, '**', ifelse(dd$P < 0.05, '*', '')
+        )))
+      return(dd)
+    })
+    
+    for (i in names(coxrl)) {
+      coxrl[[i]]$model <- i
+    }
+    
+    tmp <- Reduce(rbind, coxrl)
+    tmp$ID <- factor(tmp$ID, levels = c(sort(select_cohorts[select_cohorts !=
+                                                              train_cohort_name], decreasing = T), train_cohort_name))
+    
+    cols <- c(
+      pal_npg(alpha = 1)(10),
+      pal_jco(alpha = 1)(10),
+      pal_d3(alpha = 1)(10),
+      pal_nejm(alpha = 1)(8)
+    )
+    options(digits = 2)
+    
+    p1 <- ggplot(tmp, aes(HR, ID))+
+      geom_vline(xintercept = 1,
+                 linetype = 2,
+                 color = 'grey50')+
+      geom_errorbar(aes(xmin = HRL, xmax = HRR), width = 0.1, size = 0.8)+
+      geom_point(shape = 15, size = 3, aes(color = model))+
+      scale_color_manual(values = cols)+
+      geom_text(aes(label = ll), vjust = 1.8, size = 4)+
+      scale_x_log10()+
+      labs(x = 'Hazard ratio')+
+      theme_bw(base_rect_size = 0)+
+      facet_wrap(~ model, nrow = 1, scales = 'free_x')+
+      theme(
+        axis.text.y = element_text(
+          size = 12,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.text.x = element_text(size = 8, colour = 'black'),
+        axis.title.x = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.title.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 14,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.position = 'none'
+      )
+    tmp2 <- tmp[, c(5, 6, 7, 9)]
+    
+    ## 在选择最佳模型的时候是否纳入训练集作为评估
+    include_train <- input$AnalysisPageConsensusModelModuleIncludeTrainingDataInput
+    if (include_train) {
+      mm <- group_by(tmp2, model) %>% summarise(Cindex = mean(Cindex))
+      mm$Cse <- 0
+      mm$ID <- 'Mean C-index'
+      mm <- mm[, c('Cindex', 'Cse', 'ID', 'model')]
+      tmp2 <- rbind(tmp2, mm)
+    } else{
+      mm <-
+        group_by(tmp2[tmp2$ID != train_cohort_name,], model) %>% summarise(Cindex =
+                                                                             mean(Cindex))
+      mm$Cse <- 0
+      mm$ID <- 'Mean C-index'
+      mm <- mm[, c('Cindex', 'Cse', 'ID', 'model')]
+      tmp2 <- rbind(tmp2, mm)
+    }
+    tmp2$ID <- factor(tmp2$ID, levels = c(
+      'Mean C-index',
+      sort(select_cohorts[select_cohorts != train_cohort_name], decreasing = T),
+      train_cohort_name
+    ))
+    tmp2$ll2 <- sprintf('%.3f', tmp2$Cindex)
+    
+    p2 <- ggplot(tmp2, aes(Cindex, ID))+
+      geom_errorbar(aes(xmin = Cindex - Cse, xmax = Cindex + Cse),
+                    width = 0.1,
+                    size = 0.8)+
+      geom_bar(
+        stat = 'identity',
+        width = 0.6,
+        color = 'black',
+        aes(fill = model),
+        size = 0.5
+      )+
+      geom_vline(xintercept = 0.05,
+                 linetype = 2,
+                 color = 'grey50')+
+      geom_text(
+        aes(0.3, ID, label = ll2),
+        tmp2[tmp2$ID == 'Mean C-index',],
+        color = 'white',
+        fontface = 'bold',
+        size = 3.5
+      )+
+      scale_fill_manual(values = cols)+
+      labs(x = 'Index of concordance')+
+      theme_bw(base_rect_size = 0)+
+      facet_wrap(~ model, nrow = 1, scales = 'free_x')+
+      theme(
+        axis.text.y = element_text(
+          size = 12,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.text.x = element_text(size = 8, colour = 'black'),
+        axis.title.x = element_text(
+          size = 13,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        axis.title.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 14,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.position = 'none'
+      )
+    plot.model.score <- p1/p2
+    
+    ## plot output 
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModuleModelScorePlotHtmlDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+    
+    output$AnalysisPageConsensusModelModuleModelScorePlotHtml <- renderUI({
+      plot.height <- paste0((length(names(alldata)) * 30 + 200),"px")
+      div(
+        plotOutput(
+          outputId = "AnalysisPageConsensusModelModuleModelScorePlot",
+          height = plot.height,
+          width = "1200px"
+        ),
+        style = "height:640px; overflow-y:scroll; overflow-x: scroll;"
+      )
+      
+    })
+    
+    output$AnalysisPageConsensusModelModuleModelScorePlot <- renderPlot({
+      return(plot.model.score)
+    })
+    
+    # download plot
+    output$AnalysisPageConsensusModelModuleModelScorePlotDownloadPdfBtn <- downloadHandler(
+      
+      # filename
+      filename = function(){
+        
+        # output file name
+        paste("BEST_ConsensusModel_ModelScorePlot_",uniqID(),".pdf",sep="")
+        
+      },
+      
+      # contect
+      content = function(fname){
+        
+        plot.height <- length(names(alldata)) * 0.5 + 5
+        
+        # draw plot
+        cowplot::save_plot(
+          fname,
+          plot.model.score,
+          base_height = plot.height,
+          base_width = 12
+        )
+        
+      },
+      
+      # output file type
+      contentType = ".pdf"
+      
+    )
+    output$AnalysisPageConsensusModelModuleModelScorePlotDownloadPngBtn <- downloadHandler(
+      
+      # filename
+      filename = function(){
+        
+        # output file name
+        paste("BEST_ConsensusModel_ModelScorePlot_",uniqID(),".png",sep="")
+        
+      },
+      
+      # contect
+      content = function(fname){
+        
+        plot.height <- length(names(alldata)) * 0.5 + 5
+        
+        # draw plot
+        cowplot::save_plot(
+          fname,
+          plot.model.score,
+          base_height = plot.height,
+          base_width = 12
+        )
+        
+      },
+      
+      # output file type
+      contentType = ".png"
+      
+    )
+    
+    # show and update 4 plots user input
+    # shinyWidgets::updatePickerInput(
+    #   session = session,
+    #   inputId = "AnalysisPageConsensusModelModule4PlotsDatasetSelection",
+    #   choices = select_cohorts,
+    #   selected = select_cohorts[1]
+    # )
+    shiny::updateSelectInput(
+      session = session,
+      inputId = "AnalysisPageConsensusModelModule4PlotsDatasetSelection",
+      choices = select_cohorts,
+      selected = select_cohorts[1]
+    )
+    
+    ## optimal model
+    method <- mm$model[which.max(mm$Cindex)]
+    
+    # save method 
+    ConsensusModelReactiveValues$method <- method
+    
+    # save score_list
+    score_list <- result[[mm$model[which.max(mm$Cindex)]]]
+    ConsensusModelReactiveValues$score_list <- score_list
+    
+    ##### optimal model build #####
+    ## calculate model risk score with wrap main func
+    # print(method.selected)
+    method.selected <- method
+    results <- lzq_surmodel(select_survars = select_survars,
+                            alldata = alldata[train_cohort_name],
+                            method = method.selected,##可选 StepCox, RSF, Lasso, Ridge, Enet, GBM, SVM, plsRcox, Coxboost, SuperPC
+                            seed = 1234,
+                            StepCox_direction = ifelse(method.selected == "StepCox",input$CM_StepCox_direction,'backward'), ##包括三个选项：forward backward both
+                            RSF_nodesize = ifelse(method.selected == "RSF", input$CM_RSF_nodesize, 5), ## 3-30
+                            RSF_nsplit = ifelse(method.selected == "RSF", input$CM_RSF_nsplit, 10), ## 2-20
+                            RSF_splitrule = ifelse(method.selected == "RSF", input$CM_RSF_splitrule, "logrank"), ##包括三个选项：logrank bs.gradient logrankscore
+                            Lasso_lamda_rule = ifelse(method.selected == "Lasso", input$CM_Lasso_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Ridge_lamda_rule = ifelse(method.selected == "Ridge", input$CM_Ridge_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Enet_alpha = ifelse(method.selected == "Enet", input$CM_Enet_alpha, 0.5), ##可选择0.1-0.9
+                            Enet_lamda_rule = ifelse(method.selected == "Enet", input$CM_Enet_lamda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            GBM_nodesize = ifelse(method.selected == "GBM", input$CM_GBM_nodesize, 5),
+                            SVM_type = ifelse(method.selected == "SVM", input$CM_SVM_type, 'vanbelle1'), ##包括四个选项：regression vanbelle1 vanbelle2 hybrid'
+                            SVM_diffmeth = ifelse(method.selected == "SVM", input$CM_SVM_diffmeth, 'makediff3'), ## 包括三个选项： makediff1 makediff2 and makediff3
+                            SVM_optmeth = ifelse(method.selected == "SVM", input$CM_SVM_optmeth, 'quadprog'),   ##包括两个选项：quadprog or ipop
+                            SVM_kernel = ifelse(method.selected == "SVM", input$CM_SVM_kernel, 'add_kernel'), ##包括四个选项：lin_kernel add_kernel rbf_kernel poly_kernel
+                            plsRcox_lambda_rule = ifelse(method.selected == "plsRcox", input$CM_plsRcox_lambda_rule, 'lambda.min'), #包括两个选项 lambda.min lambda.1se
+                            Coxboost_type = ifelse(method.selected == "Coxboost", input$CM_Coxboost_type, 'verweij'), #包括两个选项 verweij naive
+                            SuperPC_ncomponents = ifelse(method.selected == "SuperPC", input$CM_SuperPC_ncomponents, 1) ## Number of principal components to compute. Should be 1,2 or 3.
+    )
+    
+    # save data
+    ConsensusModelReactiveValues$results <- results
+    
+    # output best model
+    output$AnalysisPageConsensusModelModuleOptimalModel <- renderUI({
+      span(method,
+           style = "background-color:#eac428;font-size:130%;font-weight:bold;color:#fff;padding:5px 30px 5px 30px;border-radius:10px;")
+    })
+    
+    # update input cohort
+    updateSelectInput(
+      session = session,
+      inputId = select_cohorts
+    )
+    
+    
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModuleModelScorePlotDiv"
+    )
+    # update optimal method related args
+    # # model methods
+    # model.methods <-
+    #   c(
+    #     "StepCox",
+    #     "RSF",
+    #     "Lasso",
+    #     "Ridge",
+    #     "Enet",
+    #     "GBM",
+    #     "SVM",
+    #     "plsRcox",
+    #     "Coxboost",
+    #     "SuperPC"
+    #   )
+    
+    # model.methods.not.selected <- model.methods[model.methods != method]
+    # 
+    # # add shinyjs 
+    # lapply(model.methods.not.selected, function(m){ 
+    #   shinyjs::hide(
+    #     id = paste("CM",m,"SettingDiv",sep="")
+    #   )
+    # })
+    # 
+    # shinyjs::show(
+    #   id = paste("CM",method,"SettingDiv",sep="")
+    # )
+    
+    
+  }) # isolate
+})
+
+#### 4 plots (3 plots) ####
+# percent div
+observeEvent(input$AnalysisPageConsensusModelModule4PlotsKMPlotMethodSelection,{
+  if(input$AnalysisPageConsensusModelModule4PlotsKMPlotMethodSelection == "custom"){
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModule4PlotsCutoffSelectionDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+  }else{
+    shinyjs::hide(
+      id = "AnalysisPageConsensusModelModule4PlotsCutoffSelectionDiv",
+      anim = TRUE,
+      animType = "fade"
+    )
+  }
+})
+
+# cohort changed
+observeEvent(input$AnalysisPageConsensusModelModule4PlotsDatasetSelection,{
+  # reactive values
+  score_list <- ConsensusModelReactiveValues$score_list
+  
+  # user input
+  Cohort <- input$AnalysisPageConsensusModelModule4PlotsDatasetSelection
+  
+  tmp <- score_list[[Cohort]]
+  
+  if (max(tmp[, 1], na.rm = T) < 1) {
+    time_cut <- c('3-Month AUC', '6-Month AUC', '9-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 2 & max(tmp[, 1], na.rm = T) > 1) {
+    time_cut <- c('4-Month AUC', '8-Month AUC', '12-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 3 & max(tmp[, 1], na.rm = T) > 2) {
+    time_cut <- c('6-Month AUC', '12-Month AUC', '24-Month AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) < 5 & max(tmp[, 1], na.rm = T) > 3) {
+    time_cut <- c('1-Year AUC', '2-Year AUC', '3-Year AUC')
+  }
+  if (max(tmp[, 1], na.rm = T) > 5) {
+    time_cut <- c('1-Year AUC', '3-Year AUC', '5-Year AUC')
+  }
+  get_times <- function(time_cut) {
+    if (grepl('Year', time_cut[1])) {
+      times <-
+        sapply(time_cut, function(x) {
+          unlist(strsplit(x, '-'))[1]
+        }) %>% as.numeric()
+    }
+    if (grepl('Month', time_cut[1])) {
+      times <-
+        (sapply(time_cut, function(x) {
+          unlist(strsplit(x, '-'))[1]
+        }) %>% as.numeric()) / 12
+    }
+    return(times)
+  }
+  times <- get_times(time_cut)
+  
+  ## update DCA timepoints
+  updateSelectInput(
+    session = session,
+    inputId = "AnalysisPageConsensusModelModule4PlotsDCAPlotTimePoint",
+    choices = times
+  )
+})
+
+# submit btn clicked
+observeEvent(input$AnalysisPageConsensusModelModuleModelEvaluationSubmitBtn,{
+  if(input$AnalysisPageConsensusModelModuleModelEvaluationSubmitBtn == 0){
+    return()
+  }
+  
+  input$AnalysisPageConsensusModelModuleModelEvaluationSubmitBtn
+  
+  isolate({
+    # show help for waiting
+    sendSweetAlert(
+      session = session,
+      type = "info",
+      text = "Model calculation will take a few minutes. Please wait!",
+      title = "Attention",
+      btn_labels = "OK",
+      closeOnClickOutside = TRUE
+    )
+    
+    # packages
+    library(survival)
+    library(survminer)
+    library(timeROC)
+    library(rms)
+    
+    # reactive values
+    select_survars <- ConsensusModelReactiveValues$select_survars
+    result <- ConsensusModelReactiveValues$result
+    alldata <- ConsensusModelReactiveValues$alldata 
+    train_cohort_name <- ConsensusModelReactiveValues$train_cohort_name
+    
+    # user input
+    Cohort <- input$AnalysisPageConsensusModelModule4PlotsDatasetSelection
+    model <- input$AnalysisPageConsensusModelModule4PlotsModelMethodSelection
+    method <- ConsensusModelReactiveValues$method
+    Color_palette <- input$AnalysisPageConsensusModelModule4PlotsKMPlotColorSelection
+    alpha <- input$AnalysisPageConsensusModelModule4PlotsKMPlotTransparencySelection
+    cutoff <- input$AnalysisPageConsensusModelModule4PlotsKMPlotMethodSelection
+    percent <- input$AnalysisPageConsensusModelModule4PlotsCutoffSelection
+    
+    
+    ##### KM survival curve ######
+    if (Color_palette == 'npg') {
+      cols <- pal_npg(alpha = alpha)(10)
+    }
+    if (Color_palette == 'nejm') {
+      cols <- pal_nejm(alpha = alpha)(8)
+    }
+    if (Color_palette == 'jco') {
+      cols <- pal_jco(alpha = alpha)(10)
+    }
+    if (Color_palette == 'd3') {
+      cols <- pal_d3(alpha = alpha)(10)
+    }
+    if (Color_palette == 'lancet') {
+      cols <- pal_lancet(alpha = alpha)(9)
+    }
+    if (Color_palette == 'jama') {
+      cols <- pal_jama(alpha = alpha)(7)
+    }
+    
+    plot.surv <- lzq_survplot2(
+      Sur_ids = select_survars,
+      cohort = Cohort,
+      data = result[[model]][[Cohort]],
+      gene = 'score',
+      Input = model,
+      cols = cols,
+      cutoff = cutoff,
+      percent = percent
+    )
+    
+    # plot output
+    output$AnalysisPageConsensusModelModuleKMPlot <- renderPlot({
+      return(plot.surv)
+    })
+    
+    ##### ROC curve #####
+    tmp <- result[[model]][[Cohort]]
+    
+    if (max(tmp[, 1], na.rm = T) < 1) {
+      time_cut <- c('3-Month AUC', '6-Month AUC', '9-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 2 & max(tmp[, 1], na.rm = T) > 1) {
+      time_cut <- c('4-Month AUC', '8-Month AUC', '12-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 3 & max(tmp[, 1], na.rm = T) > 2) {
+      time_cut <- c('6-Month AUC', '12-Month AUC', '24-Month AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) < 5 & max(tmp[, 1], na.rm = T) > 3) {
+      time_cut <- c('1-Year AUC', '2-Year AUC', '3-Year AUC')
+    }
+    if (max(tmp[, 1], na.rm = T) > 5) {
+      time_cut <- c('1-Year AUC', '3-Year AUC', '5-Year AUC')
+    }
+    get_times <- function(time_cut) {
+      if (grepl('Year', time_cut[1])) {
+        times <-
+          sapply(time_cut, function(x) {
+            unlist(strsplit(x, '-'))[1]
+          }) %>% as.numeric()
+      }
+      if (grepl('Month', time_cut[1])) {
+        times <-
+          (sapply(time_cut, function(x) {
+            unlist(strsplit(x, '-'))[1]
+          }) %>% as.numeric()) / 12
+      }
+      return(times)
+    }
+    times <- get_times(time_cut)
+    
+    tt <-
+      timeROC(
+        tmp[, 1],
+        tmp[, 2],
+        tmp[, 3],
+        cause = 1,
+        times = times,
+        ROC = T,
+        weighting = 'marginal'
+      )
+    tp <-
+      tt$TP %>% as.data.frame() %>% pivot_longer(cols = 1:3,
+                                                 names_to = 'time',
+                                                 values_to = 'tp')
+    fp <-
+      tt$FP %>% as.data.frame() %>% pivot_longer(cols = 1:3,
+                                                 names_to = 'time',
+                                                 values_to = 'fp')
+    
+    dd <- tp
+    dd$fp <- fp$fp
+    dd$time <-
+      ifelse(
+        dd$time == unique(dd$time)[1],
+        paste0(time_cut[1], ' = ', sprintf("%.3f", tt$AUC[1])),
+        ifelse(
+          dd$time == unique(dd$time)[2],
+          paste0(time_cut[2], ' = ', sprintf("%.3f", tt$AUC[2])),
+          paste0(time_cut[3], ' = ', sprintf("%.3f", tt$AUC[3]))
+        )
+      )
+    
+    plot.roc <- ggplot(dd, aes(fp, tp, color = time)) +
+      geom_line(size = 1) +
+      labs(x = '1-Specificity', y = 'Sensitivity', color = NULL) +
+      theme_bw(base_rect_size = 1.5) +
+      geom_abline(slope = 1, color = 'grey70') +
+      ggtitle(Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.position = c(0.995, 0.012),
+        legend.justification = c(1, 0)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_x_continuous(expand = c(0.01, 0.01)) +
+      scale_y_continuous(expand = c(0.01, 0.01))
+    
+    # plot output
+    output$AnalysisPageConsensusModelModuleTimeROCPlot <- renderPlot({
+      return(plot.roc)
+    })
+    
+    ##### Calibration curve #####
+    if(select_survars=='OS'){
+      gsurv <-  as.formula(Surv(OS.time,OS)~score)
+    }
+    if(select_survars=='RFS'){
+      gsurv <-  as.formula(Surv(RFS.time,RFS)~score)
+    }
+    if(select_survars=='DFS'){
+      gsurv <-  as.formula(Surv(DFS.time,DFS)~score)
+    }
+    if(select_survars=='PFS'){
+      gsurv <-  as.formula(Surv(PFS.time,PFS)~score)
+    }
+    if(select_survars=='DSS'){
+      gsurv <-  as.formula(Surv(DSS.time,DSS)~score)
+    }
+    
+    cox1 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[1]
+    )
+    cal1 <-
+      calibrate(
+        cox1,
+        cmethod = "KM",
+        method = "boot",
+        u = times[1],
+        m = ceiling(nrow(tmp) * 0.95 / 5),
+        B = 1000
+      )
+    cox2 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[2]
+    )
+    cal2 <-
+      calibrate(
+        cox2,
+        cmethod = "KM",
+        method = "boot",
+        u = times[2],
+        m = ceiling(nrow(tmp) * 0.95 / 5),
+        B = 1000
+      )
+    cox3 <- cph(
+      gsurv,
+      surv = T,
+      x = T,
+      y = T,
+      data = tmp,
+      time.inc = times[3]
+    )
+    cal3 <-
+      calibrate(
+        cox3,
+        cmethod = "KM",
+        method = "boot",
+        u = times[3],
+        m = ceiling(nrow(tmp) * 0.95 / 5),
+        B = 1000
+      )
+    
+    dd <-
+      Reduce(rbind, list(cal1[, c('mean.predicted', "KM")], cal2[, c('mean.predicted', "KM")], cal3[, c('mean.predicted', "KM")])) %>%
+      as.data.frame()
+    dd$time <- rep(gsub(' AUC', '', time_cut), each = 5)
+    dd <- na.omit(dd)
+    colnames(dd)[1:2] <- c('Predicted', 'Observed')
+    
+    plot.calibration <- ggplot(dd, aes(Predicted, Observed)) +
+      geom_abline(slope = 1, color = 'grey70') +
+      geom_line(size = 1, alpha = 0.7, aes(color = time)) +
+      theme_bw(base_rect_size = 1.5) +
+      geom_point(size = 3,
+                 shape = 21,
+                 aes(fill = time),
+                 stroke = 1) +
+      labs(x = 'Predicted survival (%)', y = 'Observed survival (%)', title = Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.position = c(0.995, 0.012),
+        legend.justification = c(1, 0)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_fill_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28')) +
+      scale_x_continuous(expand = c(0.03, 0)) +
+      scale_y_continuous(expand = c(0, 0.03))
+    
+    # plot output
+    output$AnalysisPageConsensusModelModuleCalCurvePlot <- renderPlot({
+      return(plot.calibration)
+    })
+    
+    ###### DCA #####
+    ## DCA
+    tmp$score <-
+      (tmp$score - min(tmp$score)) / (max(tmp$score) - min(tmp$score))
+    library(dcurves)
+    ##从times变量中选择 这就是 Timepoint for DCA的参数
+    tmp$score <-
+      (tmp$score - min(tmp$score)) / (max(tmp$score) - min(tmp$score))
+    library(dcurves)
+    ##从times变量中选择 这就是 Timepoint for DCA的参数
+    select_time <- times[2]
+    
+    dd <- tryCatch((dcurves::dca(
+      gsurv,
+      data = tmp,
+      label = list(all = 'All', none = 'None', score =
+                     model),
+      time = select_time
+    )),
+    error = function(e) {
+      message('Calculating failed due to some error, please replace another timepoint!')
+    }
+    )
+    my <- dd$dca %>% na.omit()
+    xmax <- max(my$threshold[my$variable == 'score'])
+    dd <- tryCatch((
+      dcurves::dca(
+        gsurv,
+        data = tmp,
+        thresholds = seq(0, xmax, by = 0.01),
+        label = list(all = 'All', none = 'None', score =
+                       model),
+        time = select_time
+      )
+    ),
+    error = function(e) {
+      message('Calculating failed due to some error, please replace another timepoint!')
+    }
+    )
+    
+    
+    plot.dca <- dd %>% plot(smooth = T) +
+      theme_bw(base_rect_size = 1.5) +
+      ggtitle(Cohort) +
+      theme(
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        axis.text.x = element_text(size = 12, colour = 'black'),
+        axis.title = element_text(
+          size = 15,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        panel.grid = element_blank(),
+        panel.grid.major = element_line(color = "#cacfd2", linetype = "dashed"),
+        panel.background = element_rect(fill = '#f3f6f6'),
+        plot.title = element_text(
+          hjust = 0.5,
+          size = 18,
+          colour = 'darkred',
+          face = 'bold'
+        ),
+        legend.text = element_text(size = 14),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.position = c(0.95, 0.95),
+        legend.justification = c(1, 1)
+      ) +
+      scale_color_manual(values = c('#2a9d8f', '#fcbf49', '#eb5e28'))
+    
+    
+    # plot output
+    output$AnalysisPageConsensusModelModuleDCAPlot <- renderPlot({
+      return(plot.dca)
+    })
+    
+    ## show div
+    shinyjs::show(
+      id = "AnalysisPageConsensusModelModule4PlotsDiv",
+      anim = TRUE,
+      animType = "slide"
+    )
+    
+    ##### download plot #####
+    ### pdf
+    # # generate and save plots
+    # create folders
+    dir.pdf.name = str_replace_all(paste("BEST_ConsensusModel_ModelEvaluationPlots_pdf_",uniqIDWithDate(),sep="")," +","_")
+    tmp.dir = tempdir()
+    plot.pdf.file.path = paste(tmp.dir,"/",dir.pdf.name,sep="")
+    dir.create(plot.pdf.file.path,recursive = FALSE)
+
+    # generate plots
+    save_plot(paste0(plot.pdf.file.path,"/","Kaplan-Meier_Analysis.pdf"),
+              plot.surv,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.pdf.file.path,"/","Time-dependent_ROC.pdf"),
+              plot.roc,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.pdf.file.path,"/","Calibration_Curve.pdf"),
+              plot.calibration,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.pdf.file.path,"/","Decision_Curve_Analysis.pdf"),
+              plot.dca,
+              base_height = 5.2,
+              base_width = 5)
+    
+    # download plots
+    output$AnalysisPageConsensusModelModuleSavePdfDownloadBtn <- downloadHandler(
+      filename = function(){
+        paste(dir.pdf.name,"*.zip",sep="")
+      },
+
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+
+        zip(filename, files = dir.pdf.name)
+
+        setwd(wd.now)
+      },
+
+      contentType = ".zip"
+    )
+
+    ### png
+    # # generate and save plots
+    # create folders
+    dir.png.name = str_replace_all(paste("BEST_ConsensusModel_ModelEvaluationPlots_png_",uniqIDWithDate(),sep="")," +","_")
+    tmp.dir = tempdir()
+    plot.png.file.path = paste(tmp.dir,"/",dir.png.name,sep="")
+    dir.create(plot.png.file.path,recursive = FALSE)
+    
+    # generate plots
+    save_plot(paste0(plot.png.file.path,"/","Kaplan-Meier_Analysis.png"),
+              plot.surv,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.png.file.path,"/","Time-dependent_ROC.png"),
+              plot.roc,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.png.file.path,"/","Calibration_Curve.png"),
+              plot.calibration,
+              base_height = 5.2,
+              base_width = 5)
+    save_plot(paste0(plot.png.file.path,"/","Decision_Curve_Analysis.png"),
+              plot.dca,
+              base_height = 5.2,
+              base_width = 5)
+    
+    # download plots
+    output$AnalysisPageConsensusModelModuleSavePngDownloadBtn <- downloadHandler(
+      filename = function(){
+        paste(dir.png.name,"*.zip",sep="")
+      },
+      
+      content = function(filename){
+        wd.now = getwd()
+        setwd(tmp.dir)
+        
+        zip(filename, files = dir.png.name)
+        
+        setwd(wd.now)
+      },
+      
+      contentType = ".zip"
+    )
+    
+    
+    
+  }) #isolate
+
+})
+
+
