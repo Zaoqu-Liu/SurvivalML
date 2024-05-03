@@ -4,8 +4,9 @@
 ## :arrow_double_down: Preparation
 **You can download the data files used in SurvivalML:**
 https://www.synapse.org/#!Synapse:syn58922557
+<img src="man/1.png" width="80%" />
 
-<img src="man/1.png" width="60%" />
+**After you download, move the db folder to the SurvivalML project.**
 
 ## :arrow_double_down: Environment configuration
 ```R
