@@ -1,10 +1,6 @@
 ##----------------------------------------------------------------------
 ## This script is designed for loading R packages in the main shiny app
 ##----------------------------------------------------------------------
-## Maintainer: Mingjie Wang (huzai920621@126.com)
-## Log: 
-## 2022-02-04, initial build
-
 
 #### Set packages resources ####
 options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
