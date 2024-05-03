@@ -270,7 +270,7 @@ shiny::shinyApp(
 <img src="man/2.png" width="80%" />
 
 ## :paperclip: Start the exploration
-<img src="man/3.png" width="80%" />
+<img src="man/3.png" width="100%" />
 
 
 
